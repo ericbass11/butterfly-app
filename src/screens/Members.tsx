@@ -186,6 +186,7 @@ export function Members() {
 
       {selected && (
         <LessonDetail
+          key={selected.id}
           lesson={selected}
           done={done.has(selected.id)}
           onToggle={() => toggleDone(selected.id)}
@@ -260,6 +261,7 @@ function LessonDetail({
   onClose: () => void
 }) {
   const videoId = youtubeId(lesson.videoUrl)
+  const [playing, setPlaying] = useState(false)
   // Portal para o body: escapa do stacking context da tela e cobre a navegação.
   return createPortal(
     <div className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm animate-fade-in">
@@ -276,48 +278,67 @@ function LessonDetail({
           <span className="font-label-md text-label-md text-on-surface-variant">Aula</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar p-container-padding">
-          {/* Player / capa do vídeo */}
-          <a
-            href={lesson.videoUrl || '#'}
-            target="_blank"
-            rel="noreferrer"
-            className={clsx(
-              'block relative rounded-xl overflow-hidden mb-4 group',
-              !lesson.videoUrl && 'pointer-events-none',
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {/* Player de vídeo embutido (YouTube) */}
+          <div className="bg-black">
+            {playing && videoId ? (
+              <div className="relative w-full aspect-video">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                  title={lesson.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => videoId && setPlaying(true)}
+                disabled={!videoId}
+                aria-label="Reproduzir vídeo"
+                className="relative w-full aspect-video block group bg-surface-container-high"
+              >
+                <img
+                  src={videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : lesson.thumbnail}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {videoId && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <span className="w-16 h-16 rounded-full bg-on-primary/90 flex items-center justify-center shadow-ambient-lg group-active:scale-95 transition-transform">
+                      <Icon name="play_arrow" fill className="text-primary text-[36px]" />
+                    </span>
+                  </span>
+                )}
+              </button>
             )}
-          >
-            <img
-              src={videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : lesson.thumbnail}
-              alt=""
-              className="w-full h-48 object-cover bg-surface-container-high"
-            />
-            {lesson.videoUrl && (
-              <span className="absolute inset-0 flex items-center justify-center bg-black/25">
-                <span className="w-16 h-16 rounded-full bg-on-primary/90 flex items-center justify-center shadow-ambient-lg group-active:scale-95 transition-transform">
-                  <Icon name="play_arrow" fill className="text-primary text-[36px]" />
-                </span>
+          </div>
+
+          <div className="p-container-padding">
+            <h2 className="font-headline-md text-[22px] font-semibold text-on-surface mb-1">{lesson.title}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <span className="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant">
+                <Icon name="schedule" className="text-[16px]" /> {lesson.duration}
+                {done && <span className="text-primary ml-2">· concluída</span>}
               </span>
-            )}
-          </a>
+              {videoId && (
+                <a
+                  href={lesson.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-label-md text-[13px] text-on-surface-variant hover:text-primary"
+                >
+                  Abrir no YouTube <Icon name="open_in_new" className="text-[15px]" />
+                </a>
+              )}
+            </div>
 
-          <h2 className="font-headline-md text-[22px] font-semibold text-on-surface mb-1">{lesson.title}</h2>
-          <span className="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant mb-4">
-            <Icon name="schedule" className="text-[16px]" /> {lesson.duration}
-            {done && <span className="text-primary ml-2">· concluída</span>}
-          </span>
-
-          {lesson.videoUrl && (
-            <a href={lesson.videoUrl} target="_blank" rel="noreferrer">
-              <Button variant="ghost" fullWidth icon="smart_display" className="mb-5">
-                Assistir no YouTube
-              </Button>
-            </a>
-          )}
-
-          <p className="font-body-md text-body-md text-on-surface whitespace-pre-line leading-relaxed">
-            {lesson.content || lesson.description}
-          </p>
+            <p className="font-body-md text-body-md text-on-surface whitespace-pre-line leading-relaxed">
+              {lesson.content || lesson.description}
+            </p>
+          </div>
         </div>
 
         {/* Ação */}

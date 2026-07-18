@@ -48,25 +48,54 @@ function profileFromUser(user: User): Profile {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
+/**
+ * Lê a sessão persistida DIRETO do localStorage, de forma SÍNCRONA.
+ *
+ * O supabase-js grava a sessão em `sb-<ref>-auth-token` como JSON contendo o
+ * objeto `user` completo. Bootstrapar a partir daí (em vez de esperar o
+ * `getSession()` assíncrono) elimina o "flash" e o bounce para a tela de login
+ * no refresh: enquanto houver um token no storage, a usuária permanece
+ * autenticada — sem depender de corridas de rede, Web Locks ou renovação de
+ * token. O `getSession()`/`onAuthStateChange` apenas refinam depois.
+ */
+function readStoredProfile(): Profile | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key || !/^sb-.*-auth-token$/.test(key)) continue
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw) as { user?: User; currentSession?: { user?: User } }
+      const user = parsed?.user ?? parsed?.currentSession?.user
+      if (user?.id) return profileFromUser(user)
+    }
+  } catch {
+    /* localStorage indisponível ou JSON inválido — trata como sem sessão */
+  }
+  return null
+}
 
-  // Bootstrap de sessão — o perfil vem SÍNCRONO da sessão (sem await de rede
-  // dentro do onAuthStateChange, que é anti-padrão e trava no refresh).
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Estado inicial SÍNCRONO: no modo demo vem do store; no Supabase, lê a sessão
+  // já persistida no localStorage. Assim, ao recarregar, a usuária JÁ nasce
+  // autenticada — sem tela de carregamento nem redirecionamento para o login.
+  const [profile, setProfile] = useState<Profile | null>(() =>
+    mode === 'demo' ? store.getProfile() : readStoredProfile(),
+  )
+  // A presença da sessão é conhecida de forma síncrona (localStorage), então
+  // nunca precisamos "segurar" a UI num estado de loading no boot.
+  const [loading] = useState(false)
+
+  // Mantém o perfil em sincronia com o Supabase em segundo plano. Nunca derruba
+  // para o login por um nulo transitório — só um SIGNED_OUT real limpa a sessão.
   useEffect(() => {
+    if (mode === 'demo') return
     let active = true
 
-    if (mode === 'demo') {
-      setProfile(store.getProfile())
-      setLoading(false)
-      return
-    }
-
+    // Reconcilia com a sessão canônica (renova o token se necessário). Só
+    // ATUALIZA quando há sessão; jamais zera o perfil aqui.
     supabase!.auth.getSession().then(({ data }) => {
-      if (!active) return
-      setProfile(data.session?.user ? profileFromUser(data.session.user) : null)
-      setLoading(false)
+      if (active && data.session?.user) setProfile(profileFromUser(data.session.user))
     })
 
     const { data: sub } = supabase!.auth.onAuthStateChange((event, session) => {

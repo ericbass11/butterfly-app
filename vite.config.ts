@@ -4,7 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 
 // https://vitejs.dev/config/
+// `base` é configurável via env (VITE_BASE) para funcionar tanto localmente ("/")
+// quanto no GitHub Pages, onde o app é servido em /<nome-do-repo>/.
 export default defineConfig({
+  base: process.env.VITE_BASE ?? '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -24,8 +27,9 @@ export default defineConfig({
         background_color: '#fbf9f8',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        // Relativos ao local do manifest → funcionam em "/" (local) e no subpath do Pages.
+        scope: '.',
+        start_url: '.',
         lang: 'pt-BR',
         categories: ['health', 'lifestyle', 'medical'],
         icons: [
@@ -41,7 +45,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html',
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProgramProvider } from '@/context/ProgramContext'
 import { AppLayout } from '@/components/AppLayout'
@@ -16,7 +16,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ProgramProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             {/* Público */}
             <Route path="/" element={<Login />} />
@@ -66,7 +66,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </ProgramProvider>
     </AuthProvider>
   )

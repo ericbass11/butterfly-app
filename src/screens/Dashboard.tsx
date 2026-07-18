@@ -5,7 +5,7 @@ import { useProgram } from '@/context/ProgramContext'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
-import { StageBadge } from '@/components/ButterflyAvatar'
+import { ButterflyAvatar, StageBadge } from '@/components/ButterflyAvatar'
 import { MealCapture } from '@/components/MealCapture'
 import { HABITS, PROGRAM_LENGTH, programProgress, stageProgress } from '@/lib/gamification'
 import { MOTIVATIONAL_QUOTES } from '@/data/lessons'
@@ -48,12 +48,15 @@ export function Dashboard() {
       />
 
       {/* Saudação + estágio */}
-      <div className="mb-4">
-        <p className="font-body-md text-body-md text-on-surface-variant">
-          Olá, <strong className="text-on-surface">{profile?.name?.split(' ')[0] ?? 'Convidada'}</strong> 👋
-        </p>
-        <div className="mt-2">
-          <StageBadge stage={program.stage} />
+      <div className="mb-4 flex items-center gap-3">
+        <ButterflyAvatar stage={program.stage} size="sm" />
+        <div>
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Olá, <strong className="text-on-surface">{profile?.name?.split(' ')[0] ?? 'Convidada'}</strong> 👋
+          </p>
+          <div className="mt-1.5">
+            <StageBadge stage={program.stage} />
+          </div>
         </div>
       </div>
 

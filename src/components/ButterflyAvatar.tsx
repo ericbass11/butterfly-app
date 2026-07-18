@@ -3,6 +3,7 @@ import type { Stage } from '@/lib/types'
 import { stageMeta } from '@/lib/gamification'
 import { clsx } from '@/lib/utils'
 import { Icon } from './Icon'
+import { Metamorphosis } from './Metamorphosis'
 
 const stageIcon: Record<Stage, string> = {
   larva: 'pest_control',
@@ -11,48 +12,42 @@ const stageIcon: Record<Stage, string> = {
 }
 
 const sizes = {
-  sm: { box: 'w-12 h-12', icon: 'text-[24px]' },
-  md: { box: 'w-24 h-24', icon: 'text-[44px]' },
-  lg: { box: 'w-40 h-40', icon: 'text-[80px]' },
+  sm: { box: 'w-12 h-12', svg: 34 },
+  md: { box: 'w-24 h-24', svg: 68 },
+  lg: { box: 'w-40 h-40', svg: 122 },
 }
 
 interface Props {
   stage: Stage
   size?: keyof typeof sizes
-  animated?: boolean
   className?: string
 }
 
 /** Avatar lúdico da metamorfose: Larva → Casulo → Borboleta (RF06). */
-export function ButterflyAvatar({ stage, size = 'md', animated = true, className }: Props) {
+export function ButterflyAvatar({ stage, size = 'md', className }: Props) {
   const s = sizes[size]
-  const isButterfly = stage === 'borboleta'
   return (
     <motion.div
       initial={{ scale: 0.85, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={clsx(
-        'relative rounded-full flex items-center justify-center',
-        'bg-gradient-to-br from-secondary-fixed to-primary-fixed/60 shadow-ambient-lg',
+        'relative rounded-full flex items-center justify-center overflow-hidden',
+        'bg-gradient-to-br from-secondary-fixed via-surface-container-lowest to-primary-fixed/50 shadow-ambient-lg',
         s.box,
         className,
       )}
     >
-      <div className="absolute inset-1 rounded-full bg-surface-container-lowest/70 backdrop-blur-sm" />
-      <motion.span
+      <div className="absolute inset-1 rounded-full bg-surface-container-lowest/60" />
+      <motion.div
         key={stage}
-        initial={{ scale: 0.5, rotate: -12, opacity: 0 }}
-        animate={{ scale: 1, rotate: 0, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 16 }}
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
         className="relative z-10"
       >
-        <Icon
-          name={stageIcon[stage]}
-          fill
-          className={clsx('text-primary', s.icon, animated && isButterfly && 'animate-flutter')}
-        />
-      </motion.span>
+        <Metamorphosis stage={stage} size={s.svg} />
+      </motion.div>
     </motion.div>
   )
 }

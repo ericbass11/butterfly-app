@@ -5,7 +5,8 @@ import { useProgram } from '@/context/ProgramContext'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
-import { ButterflyAvatar, StageBadge } from '@/components/ButterflyAvatar'
+import { StageBadge } from '@/components/ButterflyAvatar'
+import { UserAvatar } from '@/components/UserAvatar'
 import { MealCapture } from '@/components/MealCapture'
 import {
   AnimatedNumber,
@@ -75,9 +76,17 @@ export function Dashboard() {
         subtitle={undefined}
         left={
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center border-2 border-primary-container">
-              <Icon name="person" fill className="text-secondary text-[22px]" />
-            </div>
+            {profile?.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover border-2 border-primary-container"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center border-2 border-primary-container">
+                <Icon name="person" fill className="text-secondary text-[22px]" />
+              </div>
+            )}
             <div className="absolute -bottom-1 -right-1 bg-surface-container-highest rounded-full p-0.5 border border-surface">
               <Icon name={program.stage === 'borboleta' ? 'flutter_dash' : program.stage === 'casulo' ? 'egg' : 'pest_control'} fill className="text-[12px] text-primary" />
             </div>
@@ -93,7 +102,7 @@ export function Dashboard() {
 
       {/* Saudação + estágio */}
       <div className="mb-4 flex items-center gap-3">
-        <ButterflyAvatar stage={program.stage} size="sm" />
+        <UserAvatar stage={program.stage} photoUrl={profile?.avatarUrl} size="sm" />
         <div>
           <p className="font-body-md text-body-md text-on-surface-variant">
             Olá, <strong className="text-on-surface">{profile?.name?.split(' ')[0] ?? 'Convidada'}</strong> 👋

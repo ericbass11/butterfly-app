@@ -71,6 +71,21 @@ export async function ensureProfile(
   }
 }
 
+const AVATARS_BUCKET = 'avatars'
+
+/** Envia a foto de perfil para o Storage e retorna a URL pública. */
+export async function uploadAvatar(userId: string, dataUrl: string): Promise<string> {
+  const blob = dataUrlToBlob(dataUrl)
+  const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')
+  const path = `${userId}/avatar-${Date.now()}.${ext}`
+  const { error } = await client()
+    .storage.from(AVATARS_BUCKET)
+    .upload(path, blob, { contentType: blob.type, upsert: true })
+  if (error) throw error
+  const { data } = client().storage.from(AVATARS_BUCKET).getPublicUrl(path)
+  return data.publicUrl
+}
+
 export async function updateProfile(userId: string, patch: Partial<Profile>): Promise<void> {
   const row: Record<string, unknown> = {}
   if (patch.name !== undefined) row.name = patch.name

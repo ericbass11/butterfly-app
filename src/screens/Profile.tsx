@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useProgram } from '@/context/ProgramContext'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { Button } from '@/components/Button'
-import { ButterflyAvatar } from '@/components/ButterflyAvatar'
+import { UserAvatar } from '@/components/UserAvatar'
+import { EditProfile } from '@/components/EditProfile'
 import { motion } from 'framer-motion'
 import { PROGRAM_LENGTH, STAGES, stageMeta } from '@/lib/gamification'
 import { BADGES } from '@/lib/badges'
@@ -17,6 +19,7 @@ export function Profile() {
   const { program, reset } = useProgram()
   const navigate = useNavigate()
   const meta = stageMeta(program.stage)
+  const [editOpen, setEditOpen] = useState(false)
 
   async function handleSignOut() {
     await signOut()
@@ -25,17 +28,41 @@ export function Profile() {
 
   return (
     <div className="pt-20 pb-32 px-container-padding animate-fade-in">
-      <TopBar brand title="Butterfly" right={<Icon name="settings" className="text-primary" />} />
+      <TopBar
+        brand
+        title="Butterfly"
+        right={
+          <button
+            onClick={() => setEditOpen(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-surface-container-high active:scale-95"
+            aria-label="Editar perfil"
+          >
+            <Icon name="edit" />
+          </button>
+        }
+      />
 
       {/* Cabeçalho do perfil */}
       <div className="flex flex-col items-center text-center mb-6">
-        <ButterflyAvatar stage={program.stage} size="lg" className="mb-4" />
+        <button
+          onClick={() => setEditOpen(true)}
+          className="relative mb-4 active:scale-95 transition-transform"
+          aria-label="Alterar foto"
+        >
+          <UserAvatar stage={program.stage} photoUrl={profile?.avatarUrl} size="lg" />
+          <span className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center border-2 border-surface shadow-ambient">
+            <Icon name="photo_camera" fill className="text-on-primary text-[20px]" />
+          </span>
+        </button>
         <h2 className="font-headline-lg text-[26px] font-bold text-on-surface">{profile?.name}</h2>
         <p className="font-body-md text-body-md text-on-surface-variant">{profile?.email}</p>
         <span className="inline-flex items-center gap-1.5 mt-3 rounded-full bg-secondary-fixed/60 px-3 py-1 font-label-md text-label-md text-on-secondary-fixed-variant">
           <Icon name={meta.icon} fill className="text-[16px]" /> {meta.label} · {roleLabel(profile?.role)}
         </span>
         <p className="font-body-sm text-body-sm text-on-surface-variant mt-3 max-w-xs italic">{meta.blurb}</p>
+        <Button variant="ghost" icon="edit" onClick={() => setEditOpen(true)} className="mt-4 !min-h-[40px] !px-5">
+          Editar perfil
+        </Button>
       </div>
 
       {/* Métricas */}
@@ -166,6 +193,8 @@ export function Profile() {
           Sair
         </Button>
       </div>
+
+      <EditProfile open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   )
 }

@@ -1,5 +1,14 @@
 import { supabase } from './supabase'
-import type { Anamnese, MealEntry, Profile, ProgramState, Role, Stage, TriageResult } from './types'
+import type {
+  Anamnese,
+  ChatMessage,
+  MealEntry,
+  Profile,
+  ProgramState,
+  Role,
+  Stage,
+  TriageResult,
+} from './types'
 import { dataUrlToBlob, relativeDay } from './utils'
 import { DAILY_MAX_POINTS } from './gamification'
 
@@ -303,4 +312,134 @@ export async function getAdminStats(): Promise<AdminStats> {
       borboleta,
     },
   }
+}
+
+// ---------- Conteúdo (Educação) ----------
+
+export interface DbModule {
+  id: string
+  slug: string
+  title: string
+  description: string
+  tag: string
+  cover: string
+}
+
+export interface DbLesson {
+  id: string
+  slug: string
+  moduleSlug: string | null
+  category: string
+  title: string
+  description: string
+  duration: string
+  thumbnail: string
+}
+
+export interface DbEbook {
+  id: string
+  title: string
+  format: string
+}
+
+export async function listModules(): Promise<DbModule[]> {
+  const { data, error } = await client().from('modules').select('*').order('order_index')
+  if (error) throw error
+  return (data ?? []).map((m) => ({
+    id: m.id,
+    slug: m.slug,
+    title: m.title,
+    description: m.description ?? '',
+    tag: m.tag ?? 'Módulo',
+    cover: m.cover_url ?? '',
+  }))
+}
+
+export async function listLessons(): Promise<DbLesson[]> {
+  const { data, error } = await client().from('lessons').select('*').order('order_index')
+  if (error) throw error
+  return (data ?? []).map((l) => ({
+    id: l.id,
+    slug: l.slug,
+    moduleSlug: l.module_slug ?? null,
+    category: l.category,
+    title: l.title,
+    description: l.description ?? '',
+    duration: l.duration ?? '',
+    thumbnail: l.thumbnail_url ?? '',
+  }))
+}
+
+export async function listEbooks(): Promise<DbEbook[]> {
+  const { data, error } = await client().from('ebooks').select('*').order('order_index')
+  if (error) throw error
+  return (data ?? []).map((e) => ({ id: e.id, title: e.title, format: e.format ?? 'PDF' }))
+}
+
+/** Ids das aulas concluídas pela usuária. */
+export async function getDoneLessonIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await client()
+    .from('lesson_progress')
+    .select('lesson_id, done')
+    .eq('user_id', userId)
+    .eq('done', true)
+  if (error) throw error
+  return new Set((data ?? []).map((r) => r.lesson_id as string))
+}
+
+export async function setLessonDone(userId: string, lessonId: string, done: boolean): Promise<void> {
+  const { error } = await client()
+    .from('lesson_progress')
+    .upsert(
+      { user_id: userId, lesson_id: lessonId, done, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,lesson_id' },
+    )
+  if (error) throw error
+}
+
+// ---------- Base de conhecimento da IA ----------
+
+export interface DbKnowledge {
+  keywords: string[]
+  answer: string
+  tip?: string
+}
+
+export async function listKnowledge(): Promise<DbKnowledge[]> {
+  const { data, error } = await client().from('knowledge_entries').select('keywords, answer, tip')
+  if (error) throw error
+  return (data ?? []).map((k) => ({
+    keywords: (k.keywords ?? []) as string[],
+    answer: k.answer as string,
+    tip: (k.tip as string) ?? undefined,
+  }))
+}
+
+// ---------- Histórico de chat ----------
+
+export async function listChatMessages(userId: string): Promise<ChatMessage[]> {
+  const { data, error } = await client()
+    .from('chat_messages')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(200)
+  if (error) throw error
+  return (data ?? []).map((m) => ({
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    tip: m.tip ?? undefined,
+    createdAt: m.created_at,
+  }))
+}
+
+export async function insertChatMessage(
+  userId: string,
+  msg: { role: 'user' | 'assistant'; content: string; tip?: string },
+): Promise<void> {
+  const { error } = await client()
+    .from('chat_messages')
+    .insert({ user_id: userId, role: msg.role, content: msg.content, tip: msg.tip ?? null })
+  if (error) throw error
 }

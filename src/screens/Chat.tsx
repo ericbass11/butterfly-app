@@ -5,13 +5,38 @@ import { askSquad, GREETING, makeMessage } from '@/lib/aiSquad'
 import { SUGGESTED_QUESTIONS } from '@/data/knowledge'
 import type { ChatMessage } from '@/lib/types'
 import { clsx } from '@/lib/utils'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
+import * as db from '@/lib/db'
 
 /** Chatbot de Suporte IA — Squad de Agentes (RF08, RNF04). */
 export function Chat() {
+  const { profile } = useAuth()
+  const userId = profile?.id ?? null
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
+  const [knowledge, setKnowledge] = useState<db.DbKnowledge[] | undefined>(undefined)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Carrega histórico + base de conhecimento do Supabase (quando disponível)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !userId) return
+    let active = true
+    ;(async () => {
+      try {
+        const [history, kb] = await Promise.all([db.listChatMessages(userId), db.listKnowledge()])
+        if (!active) return
+        if (history.length > 0) setMessages(history)
+        if (kb.length > 0) setKnowledge(kb)
+      } catch {
+        /* mantém saudação + base local */
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [userId])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -23,9 +48,17 @@ export function Chat() {
     setInput('')
     setMessages((m) => [...m, makeMessage('user', clean)])
     setTyping(true)
-    const reply = await askSquad(clean)
+    if (isSupabaseConfigured && userId) {
+      db.insertChatMessage(userId, { role: 'user', content: clean }).catch(() => {})
+    }
+    const reply = await askSquad(clean, knowledge)
     setTyping(false)
     setMessages((m) => [...m, makeMessage('assistant', reply.content, reply.tip)])
+    if (isSupabaseConfigured && userId) {
+      db.insertChatMessage(userId, { role: 'assistant', content: reply.content, tip: reply.tip }).catch(
+        () => {},
+      )
+    }
   }
 
   return (

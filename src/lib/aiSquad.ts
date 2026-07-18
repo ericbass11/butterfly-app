@@ -18,11 +18,14 @@ import type { ChatMessage } from './types'
  * que garante que nenhum alimento proibido seja recomendado.
  */
 
-function retrieve(query: string): KnowledgeEntry | null {
+function retrieve(query: string, entries: KnowledgeEntry[]): KnowledgeEntry | null {
   const q = query.toLowerCase()
   let best: { entry: KnowledgeEntry; score: number } | null = null
-  for (const entry of KNOWLEDGE_BASE) {
-    const score = entry.keywords.reduce((acc, kw) => (q.includes(kw) ? acc + 1 : acc), 0)
+  for (const entry of entries) {
+    const score = entry.keywords.reduce(
+      (acc, kw) => (q.includes(kw.toLowerCase()) ? acc + 1 : acc),
+      0,
+    )
     if (score > 0 && (!best || score > best.score)) best = { entry, score }
   }
   return best?.entry ?? null
@@ -52,11 +55,15 @@ export interface SquadReply {
   tip?: string
 }
 
-/** Ponto de entrada do chat. Retorna a resposta auditada. */
-export async function askSquad(query: string): Promise<SquadReply> {
+/**
+ * Ponto de entrada do chat. Retorna a resposta auditada.
+ * `knowledge` permite injetar a base vinda do Supabase; se vazia, usa a local.
+ */
+export async function askSquad(query: string, knowledge?: KnowledgeEntry[]): Promise<SquadReply> {
   // pequena latência simulada para dar sensação de "pensando"
   await new Promise((r) => setTimeout(r, 650))
-  const entry = retrieve(query)
+  const entries = knowledge && knowledge.length > 0 ? knowledge : KNOWLEDGE_BASE
+  const entry = retrieve(query, entries)
   if (!entry) {
     return { content: FALLBACK_ANSWER }
   }

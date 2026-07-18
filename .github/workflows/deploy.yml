@@ -40,12 +40,8 @@ jobs:
         env:
           # Base path do GitHub Pages: https://<user>.github.io/<repo>/
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Credenciais do Supabase (defina em Settings -> Secrets and variables ->
-          # Actions -> Variables). A anon key é pública por design (RLS protege os dados).
-          # Se ficarem vazias, o app roda em modo demonstração (localStorage).
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-          VITE_N8N_WEBHOOK_URL: ${{ vars.VITE_N8N_WEBHOOK_URL }}
+          # As credenciais do Supabase vêm de .env.production (commitado; anon key é
+          # pública por design — a RLS protege os dados).
         run: npm run build
 
       - name: Upload artifact

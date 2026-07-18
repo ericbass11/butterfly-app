@@ -5,6 +5,7 @@ import { store } from '@/lib/store'
 import type { Role } from '@/lib/types'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
+import { MetamorphosisHero } from '@/components/MetamorphosisHero'
 import { clsx } from '@/lib/utils'
 
 const roleOptions: { value: Role; label: string; icon: string; desc: string }[] = [
@@ -65,11 +66,9 @@ export function Login() {
   return (
     <div className="mx-auto max-w-[520px] min-h-dvh flex flex-col px-container-padding pt-safe pb-8">
       <div className="flex-1 flex flex-col justify-center animate-fade-in">
-        {/* Marca */}
+        {/* Marca + vídeo-herói da metamorfose */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-primary-container flex items-center justify-center shadow-ambient-lg mb-5">
-            <Icon name="spa" fill className="text-on-primary text-[40px]" />
-          </div>
+          <MetamorphosisHero className="w-full max-w-[360px] aspect-[16/10] mb-5" />
           <h1 className="font-headline-xl text-[34px] leading-tight font-bold text-primary tracking-tight">
             Butterfly
           </h1>

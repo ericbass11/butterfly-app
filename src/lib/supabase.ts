@@ -14,7 +14,16 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 export const isSupabaseConfigured = Boolean(url && anonKey)
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(url as string, anonKey as string)
+  ? createClient(url as string, anonKey as string, {
+      auth: {
+        // Mantém a sessão no localStorage e renova o token automaticamente
+        persistSession: true,
+        autoRefreshToken: true,
+        // Usamos e-mail+senha (não magic link/OAuth). Desligar a detecção de
+        // sessão na URL evita qualquer conflito com o hash do HashRouter.
+        detectSessionInUrl: false,
+      },
+    })
   : null
 
 /**

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -259,22 +260,23 @@ function LessonDetail({
   onClose: () => void
 }) {
   const videoId = youtubeId(lesson.videoUrl)
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-inverse-surface/40 backdrop-blur-sm animate-fade-in">
-      <div className="mt-auto w-full max-w-[520px] mx-auto bg-surface rounded-t-2xl max-h-[92dvh] flex flex-col shadow-ambient-lg">
+  // Portal para o body: escapa do stacking context da tela e cobre a navegação.
+  return createPortal(
+    <div className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm animate-fade-in">
+      <div className="absolute inset-0 mx-auto max-w-[520px] bg-surface flex flex-col">
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between p-4 border-b border-outline-variant/60 shrink-0">
-          <span className="font-label-md text-label-md text-on-surface-variant">Aula</span>
+        <div className="flex items-center gap-2 px-2 h-16 pt-safe border-b border-outline-variant/60 shrink-0">
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-container-high"
-            aria-label="Fechar"
+            className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high active:scale-95"
+            aria-label="Voltar"
           >
-            <Icon name="close" />
+            <Icon name="arrow_back" />
           </button>
+          <span className="font-label-md text-label-md text-on-surface-variant">Aula</span>
         </div>
 
-        <div className="overflow-y-auto no-scrollbar p-container-padding">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-container-padding">
           {/* Player / capa do vídeo */}
           <a
             href={lesson.videoUrl || '#'}
@@ -330,7 +332,8 @@ function LessonDetail({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

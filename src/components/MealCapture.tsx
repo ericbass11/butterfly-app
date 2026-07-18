@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { fileToDataUrl } from '@/lib/utils'
@@ -45,8 +46,8 @@ export function MealCapture({ open, onClose, onSave }: Props) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-inverse-surface/40 backdrop-blur-sm animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-inverse-surface/40 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-[520px] bg-surface rounded-t-2xl p-container-padding pb-safe shadow-ambient-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-headline-md text-[20px] font-semibold text-on-surface">Registrar refeição</h3>
@@ -94,6 +95,7 @@ export function MealCapture({ open, onClose, onSave }: Props) {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

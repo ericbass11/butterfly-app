@@ -6,6 +6,7 @@ import { Icon } from './Icon'
 import { Metamorphosis } from './Metamorphosis'
 import { Button } from './Button'
 import { stageMeta } from '@/lib/gamification'
+import { badgeById } from '@/lib/badges'
 import { clsx } from '@/lib/utils'
 import { fadeUpItem } from '@/lib/motion'
 
@@ -282,6 +283,49 @@ export function StageCelebration({ stage, onClose }: { stage: Stage; onClose: ()
         </motion.div>
       </motion.div>
     </AnimatePresence>,
+    document.body,
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Celebração de conquista desbloqueada (badge).
+// ---------------------------------------------------------------------------
+export function BadgeToast({ badges, onDone }: { badges: string[]; onDone: () => void }) {
+  const id = badges[badges.length - 1]
+  const badge = badgeById(id)
+  const extra = badges.length - 1
+
+  useEffect(() => {
+    const t = setTimeout(onDone, 3600)
+    return () => clearTimeout(t)
+  }, [badges, onDone])
+
+  if (!badge) return null
+  return createPortal(
+    <div className="pointer-events-none fixed inset-0 z-[93] flex items-start justify-center pt-20">
+      <Confetti run pieces={30} />
+      <motion.div
+        initial={{ y: -40, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+        className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-surface-container-lowest border border-primary-container/40 shadow-ambient-lg px-4 py-3 mx-4"
+      >
+        <motion.div
+          initial={{ scale: 0.4, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.1 }}
+          className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center shrink-0"
+        >
+          <Icon name={badge.icon} fill className="text-on-primary text-[24px]" />
+        </motion.div>
+        <div>
+          <p className="font-label-md text-[11px] uppercase tracking-wider text-primary">Nova conquista!</p>
+          <p className="font-label-md text-label-md text-on-surface">{badge.title}</p>
+          {extra > 0 && <p className="font-body-sm text-[12px] text-on-surface-variant">+{extra} desbloqueada(s)</p>}
+        </div>
+      </motion.div>
+    </div>,
     document.body,
   )
 }

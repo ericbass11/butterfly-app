@@ -29,6 +29,8 @@ No painel do seu projeto Supabase:
    - [`supabase/migrations/0005_admin_management.sql`](./supabase/migrations/0005_admin_management.sql)
      — permite que **admin** edite o papel de outras usuárias pela tela de gestão
      (necessária para a aba **Usuárias** do painel admin funcionar)
+   - [`supabase/migrations/0006_badges.sql`](./supabase/migrations/0006_badges.sql)
+     — coluna `badges` no `program_state` para guardar as **conquistas** desbloqueadas
 
 Isso cria as tabelas `profiles`, `anamneses`, `program_state`, `meals`, com **RLS**
 (cada usuária só acessa os próprios dados), a função de papel, o **trigger** que cria

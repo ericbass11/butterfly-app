@@ -5,9 +5,12 @@ import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { Button } from '@/components/Button'
 import { ButterflyAvatar } from '@/components/ButterflyAvatar'
+import { motion } from 'framer-motion'
 import { PROGRAM_LENGTH, STAGES, stageMeta } from '@/lib/gamification'
+import { BADGES } from '@/lib/badges'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { clsx } from '@/lib/utils'
+import { fadeUpItem, staggerContainer } from '@/lib/motion'
 
 export function Profile() {
   const { profile, signOut } = useAuth()
@@ -41,6 +44,55 @@ export function Profile() {
         <Metric icon="calendar_today" value={`${program.day}/${PROGRAM_LENGTH}`} label="Dias" />
         <Metric icon="local_fire_department" value={`${program.streak}`} label="Sequência" />
       </div>
+
+      {/* Conquistas */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-headline-md text-[20px] text-on-surface">Conquistas</h3>
+          <span className="font-label-md text-label-md text-primary">
+            {program.badges?.length ?? 0}/{BADGES.length}
+          </span>
+        </div>
+        <motion.div
+          className="grid grid-cols-4 gap-3"
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, amount: 0.1 }}
+        >
+          {BADGES.map((b) => {
+            const unlocked = (program.badges ?? []).includes(b.id)
+            return (
+              <motion.div
+                key={b.id}
+                variants={fadeUpItem}
+                whileTap={{ scale: 0.92 }}
+                title={`${b.title} — ${b.desc}`}
+                className="flex flex-col items-center gap-1 text-center"
+              >
+                <div
+                  className={clsx(
+                    'w-14 h-14 rounded-2xl flex items-center justify-center relative',
+                    unlocked
+                      ? 'bg-gradient-to-br from-primary-container to-primary text-on-primary shadow-ambient'
+                      : 'bg-surface-container text-outline',
+                  )}
+                >
+                  <Icon name={unlocked ? b.icon : 'lock'} fill={unlocked} className="text-[26px]" />
+                </div>
+                <span
+                  className={clsx(
+                    'font-body-sm text-[10px] leading-tight line-clamp-2',
+                    unlocked ? 'text-on-surface' : 'text-outline',
+                  )}
+                >
+                  {b.title}
+                </span>
+              </motion.div>
+            )
+          })}
+        </motion.div>
+      </section>
 
       {/* Timeline da metamorfose */}
       <section className="mb-6">

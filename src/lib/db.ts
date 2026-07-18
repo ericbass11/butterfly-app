@@ -123,6 +123,7 @@ export async function getProgram(userId: string): Promise<ProgramState | null> {
     todayCheckins: (data.today_checkins ?? {}) as Record<string, boolean>,
     lastCheckinDate: data.last_checkin_date,
     streak: data.streak,
+    badges: (data.badges ?? []) as string[],
     meals,
   }
 }
@@ -152,6 +153,7 @@ export async function upsertProgram(
     today_checkins: state.todayCheckins,
     last_checkin_date: state.lastCheckinDate,
     streak: state.streak,
+    badges: state.badges ?? [],
     updated_at: new Date().toISOString(),
   }
   if (onboarded !== undefined) row.onboarded = onboarded

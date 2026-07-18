@@ -9,6 +9,7 @@ import { ButterflyAvatar, StageBadge } from '@/components/ButterflyAvatar'
 import { MealCapture } from '@/components/MealCapture'
 import {
   AnimatedNumber,
+  BadgeToast,
   Confetti,
   DailyCompleteToast,
   DailyRing,
@@ -25,7 +26,8 @@ const STAGE_ORDER: Stage[] = ['larva', 'casulo', 'borboleta']
 
 export function Dashboard() {
   const { profile } = useAuth()
-  const { program, toggleHabit, addMeal, todayPoints, todayComplete } = useProgram()
+  const { program, toggleHabit, addMeal, todayPoints, todayComplete, newBadges, dismissBadges } =
+    useProgram()
   const [mealOpen, setMealOpen] = useState(false)
 
   // --- Gamificação: celebrações ---
@@ -199,6 +201,7 @@ export function Dashboard() {
       {/* Gamificação: celebrações */}
       <Confetti run={confettiRun} />
       <DailyCompleteToast show={dailyToast} />
+      {newBadges.length > 0 && <BadgeToast badges={newBadges} onDone={dismissBadges} />}
       {celebrateStage && (
         <StageCelebration stage={celebrateStage} onClose={() => setCelebrateStage(null)} />
       )}

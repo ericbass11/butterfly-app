@@ -334,6 +334,8 @@ export interface DbLesson {
   description: string
   duration: string
   thumbnail: string
+  content: string
+  videoUrl: string
 }
 
 export interface DbEbook {
@@ -367,6 +369,8 @@ export async function listLessons(): Promise<DbLesson[]> {
     description: l.description ?? '',
     duration: l.duration ?? '',
     thumbnail: l.thumbnail_url ?? '',
+    content: l.content ?? '',
+    videoUrl: l.video_url ?? '',
   }))
 }
 

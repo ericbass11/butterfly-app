@@ -23,6 +23,9 @@ No painel do seu projeto Supabase:
      — conteúdo gerenciável (**modules, lessons, ebooks, knowledge_entries**),
      progresso de aulas e **histórico de chat** — já com um **seed grande** de conteúdo
      (4 módulos, ~37 aulas, 12 e-books, 20 respostas da IA)
+   - [`supabase/migrations/0004_lesson_content_and_videos.sql`](./supabase/migrations/0004_lesson_content_and_videos.sql)
+     — adiciona o **texto completo** de cada aula (coluna `content`) e o **vídeo**
+     (`video_url`, links do YouTube como conteúdo inicial, trocáveis pelas suas gravações)
 
 Isso cria as tabelas `profiles`, `anamneses`, `program_state`, `meals`, com **RLS**
 (cada usuária só acessa os próprios dados), a função de papel, o **trigger** que cria

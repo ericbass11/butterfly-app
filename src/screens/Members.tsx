@@ -26,6 +26,7 @@ export function Members() {
   const [ebooks, setEbooks] = useState<db.DbEbook[]>([])
   const [done, setDone] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<db.DbLesson | null>(null)
 
   useEffect(() => {
     let active = true
@@ -124,7 +125,7 @@ export function Members() {
             {featuredLessons.length > 0 && (
               <div className="flex flex-col gap-2 mb-4">
                 {featuredLessons.map((l) => (
-                  <LessonRow key={l.id} l={l} done={done.has(l.id)} onToggle={() => toggleDone(l.id)} compact />
+                  <LessonRow key={l.id} l={l} done={done.has(l.id)} onOpen={() => setSelected(l)} compact />
                 ))}
               </div>
             )}
@@ -175,12 +176,21 @@ export function Members() {
             </h3>
             <div className="flex flex-col gap-3">
               {items.map((l) => (
-                <LessonRow key={l.id} l={l} done={done.has(l.id)} onToggle={() => toggleDone(l.id)} />
+                <LessonRow key={l.id} l={l} done={done.has(l.id)} onOpen={() => setSelected(l)} />
               ))}
             </div>
           </section>
         )
       })}
+
+      {selected && (
+        <LessonDetail
+          lesson={selected}
+          done={done.has(selected.id)}
+          onToggle={() => toggleDone(selected.id)}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   )
 }
@@ -188,17 +198,17 @@ export function Members() {
 function LessonRow({
   l,
   done,
-  onToggle,
+  onOpen,
   compact,
 }: {
   l: db.DbLesson
   done: boolean
-  onToggle: () => void
+  onOpen: () => void
   compact?: boolean
 }) {
   return (
     <button
-      onClick={onToggle}
+      onClick={onOpen}
       className={clsx(
         'flex gap-3 text-left transition-all active:scale-[0.99]',
         compact
@@ -234,4 +244,98 @@ function LessonRow({
       </div>
     </button>
   )
+}
+
+/** Detalhe da aula: vídeo (YouTube) + texto completo + marcar concluída. */
+function LessonDetail({
+  lesson,
+  done,
+  onToggle,
+  onClose,
+}: {
+  lesson: db.DbLesson
+  done: boolean
+  onToggle: () => void
+  onClose: () => void
+}) {
+  const videoId = youtubeId(lesson.videoUrl)
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-inverse-surface/40 backdrop-blur-sm animate-fade-in">
+      <div className="mt-auto w-full max-w-[520px] mx-auto bg-surface rounded-t-2xl max-h-[92dvh] flex flex-col shadow-ambient-lg">
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between p-4 border-b border-outline-variant/60 shrink-0">
+          <span className="font-label-md text-label-md text-on-surface-variant">Aula</span>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-container-high"
+            aria-label="Fechar"
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto no-scrollbar p-container-padding">
+          {/* Player / capa do vídeo */}
+          <a
+            href={lesson.videoUrl || '#'}
+            target="_blank"
+            rel="noreferrer"
+            className={clsx(
+              'block relative rounded-xl overflow-hidden mb-4 group',
+              !lesson.videoUrl && 'pointer-events-none',
+            )}
+          >
+            <img
+              src={videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : lesson.thumbnail}
+              alt=""
+              className="w-full h-48 object-cover bg-surface-container-high"
+            />
+            {lesson.videoUrl && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                <span className="w-16 h-16 rounded-full bg-on-primary/90 flex items-center justify-center shadow-ambient-lg group-active:scale-95 transition-transform">
+                  <Icon name="play_arrow" fill className="text-primary text-[36px]" />
+                </span>
+              </span>
+            )}
+          </a>
+
+          <h2 className="font-headline-md text-[22px] font-semibold text-on-surface mb-1">{lesson.title}</h2>
+          <span className="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant mb-4">
+            <Icon name="schedule" className="text-[16px]" /> {lesson.duration}
+            {done && <span className="text-primary ml-2">· concluída</span>}
+          </span>
+
+          {lesson.videoUrl && (
+            <a href={lesson.videoUrl} target="_blank" rel="noreferrer">
+              <Button variant="ghost" fullWidth icon="smart_display" className="mb-5">
+                Assistir no YouTube
+              </Button>
+            </a>
+          )}
+
+          <p className="font-body-md text-body-md text-on-surface whitespace-pre-line leading-relaxed">
+            {lesson.content || lesson.description}
+          </p>
+        </div>
+
+        {/* Ação */}
+        <div className="p-container-padding border-t border-outline-variant/60 pb-safe shrink-0">
+          <Button
+            fullWidth
+            icon={done ? 'check_circle' : 'radio_button_unchecked'}
+            variant={done ? 'tonal' : 'primary'}
+            onClick={onToggle}
+          >
+            {done ? 'Concluída — desmarcar' : 'Marcar como concluída'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function youtubeId(url: string): string | null {
+  if (!url) return null
+  const m = /[?&]v=([^&]+)/.exec(url) || /youtu\.be\/([^?]+)/.exec(url)
+  return m ? m[1] : null
 }

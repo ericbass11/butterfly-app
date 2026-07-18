@@ -35,6 +35,8 @@ No painel do seu projeto Supabase:
      — bucket público **`avatars`** para as **fotos de perfil** (personalização da conta)
    - [`supabase/migrations/0008_fix_accents_chat.sql`](./supabase/migrations/0008_fix_accents_chat.sql)
      — corrige a **acentuação** das respostas do Chat de IA (seed original sem acentos)
+   - [`supabase/migrations/0009_fix_accents_education.sql`](./supabase/migrations/0009_fix_accents_education.sql)
+     — corrige a **acentuação** de todo o conteúdo da Educação (módulos, aulas e e-books)
 
 Isso cria as tabelas `profiles`, `anamneses`, `program_state`, `meals`, com **RLS**
 (cada usuária só acessa os próprios dados), a função de papel, o **trigger** que cria

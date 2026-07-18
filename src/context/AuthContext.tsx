@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import type { User } from '@supabase/supabase-js'
 import type { Profile, Role } from '@/lib/types'
 import { createProfile, store } from '@/lib/store'
 import { isSupabaseConfigured, supabase, triggerAutomation } from '@/lib/supabase'
@@ -23,11 +24,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   loading: boolean
   mode: AuthMode
-  /** Modo demo — login simulado com papel selecionável (RBAC). */
   signInDemo: (name: string, email: string, role?: Role) => Promise<Profile>
-  /** Supabase — cadastro com e-mail e senha. */
   signUp: (name: string, email: string, password: string, role: Role) => Promise<SignUpResult>
-  /** Supabase — login com e-mail e senha. */
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (patch: Partial<Profile>) => void
@@ -37,11 +35,25 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const mode: AuthMode = isSupabaseConfigured ? 'supabase' : 'demo'
 
+/** Deriva um Profile a partir do usuário da sessão (metadata) — sem round-trip. */
+function profileFromUser(user: User): Profile {
+  const md = (user.user_metadata ?? {}) as Record<string, unknown>
+  return {
+    id: user.id,
+    name: (md.name as string) ?? '',
+    email: user.email ?? '',
+    role: ((md.role as string) ?? 'patient') as Role,
+    avatarUrl: (md.avatar_url as string) ?? undefined,
+    createdAt: user.created_at ?? new Date(0).toISOString(),
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Bootstrap de sessão
+  // Bootstrap de sessão — o perfil vem SÍNCRONO da sessão (sem await de rede
+  // dentro do onAuthStateChange, que é anti-padrão e trava no refresh).
   useEffect(() => {
     let active = true
 
@@ -51,33 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Supabase: recupera sessão atual e escuta mudanças
-    supabase!.auth.getSession().then(async ({ data }) => {
+    supabase!.auth.getSession().then(({ data }) => {
       if (!active) return
-      const user = data.session?.user
-      if (user) {
-        try {
-          const p = await getProfile(user.id)
-          if (active) setProfile(p)
-        } catch {
-          /* ignora — perfil pode ainda não existir */
-        }
-      }
-      if (active) setLoading(false)
+      setProfile(data.session?.user ? profileFromUser(data.session.user) : null)
+      setLoading(false)
     })
 
-    const { data: sub } = supabase!.auth.onAuthStateChange(async (_event, session) => {
-      const user = session?.user
-      if (!user) {
-        if (active) setProfile(null)
-        return
-      }
-      try {
-        const p = await getProfile(user.id)
-        if (active) setProfile(p)
-      } catch {
-        /* ignora */
-      }
+    const { data: sub } = supabase!.auth.onAuthStateChange((_event, session) => {
+      if (!active) return
+      setProfile(session?.user ? profileFromUser(session.user) : null)
     })
 
     return () => {
@@ -85,6 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe()
     }
   }, [])
+
+  // Refina o perfil com dados canônicos do banco (avatar, edições) — não bloqueia
+  // a autenticação e nunca zera o perfil.
+  useEffect(() => {
+    if (mode !== 'supabase' || !profile?.id) return
+    let active = true
+    getProfile(profile.id)
+      .then((p) => {
+        if (active && p) setProfile((prev) => (prev && prev.id === p.id ? { ...prev, ...p } : prev))
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
 
   const signInDemo = useCallback(async (name: string, email: string, role: Role = 'patient') => {
     const p = createProfile(name.trim() || 'Convidada', email.trim(), role)
@@ -103,11 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (error) throw new Error(traduzErro(error.message))
 
-      // Se a confirmação de e-mail estiver desativada, já vem sessão + usuário.
       if (data.session?.user) {
-        const p = await ensureProfile(data.session.user.id, name.trim(), email.trim(), role)
-        setProfile(p)
-        await triggerAutomation('welcome', { name: p.name, email: p.email, role: p.role })
+        setProfile(profileFromUser(data.session.user))
+        ensureProfile(data.session.user.id, name.trim(), email.trim(), role).catch(() => {})
+        await triggerAutomation('welcome', { name: name.trim(), email: email.trim(), role })
         return { needsConfirmation: false }
       }
       return { needsConfirmation: true }
@@ -121,16 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     })
     if (error) throw new Error(traduzErro(error.message))
-    if (data.user) {
-      const p = await getProfile(data.user.id)
-      setProfile(p)
-    }
+    if (data.user) setProfile(profileFromUser(data.user))
   }, [])
 
   const signOut = useCallback(async () => {
-    if (mode === 'supabase') {
-      await supabase!.auth.signOut()
-    }
+    if (mode === 'supabase') await supabase!.auth.signOut()
     store.clearAll()
     setProfile(null)
   }, [])
@@ -139,11 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile((prev) => {
       if (!prev) return prev
       const next = { ...prev, ...patch }
-      if (mode === 'demo') {
-        store.setProfile(next)
-      } else {
-        import('@/lib/db').then((db) => db.updateProfile(next.id, patch)).catch(() => {})
-      }
+      if (mode === 'demo') store.setProfile(next)
+      else import('@/lib/db').then((db) => db.updateProfile(next.id, patch)).catch(() => {})
       return next
     })
   }, [])

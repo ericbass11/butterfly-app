@@ -19,6 +19,16 @@ No painel do seu projeto Supabase:
    - [`supabase/migrations/0002_storage_and_panels.sql`](./supabase/migrations/0002_storage_and_panels.sql)
      — bucket privado **`meal-photos`** (fotos das refeições) e RLS para os painéis de
      Parceiro/Admin lerem os dados
+   - [`supabase/migrations/0003_content_and_chat.sql`](./supabase/migrations/0003_content_and_chat.sql)
+     — conteúdo gerenciável (**modules, lessons, ebooks, knowledge_entries**),
+     progresso de aulas e **histórico de chat** — já com um **seed grande** de conteúdo
+     (4 módulos, ~37 aulas, 12 e-books, 20 respostas da IA)
+   - [`supabase/migrations/0004_lesson_content_and_videos.sql`](./supabase/migrations/0004_lesson_content_and_videos.sql)
+     — adiciona o **texto completo** de cada aula (coluna `content`) e o **vídeo**
+     (`video_url`, links do YouTube como conteúdo inicial, trocáveis pelas suas gravações)
+   - [`supabase/migrations/0005_admin_management.sql`](./supabase/migrations/0005_admin_management.sql)
+     — permite que **admin** edite o papel de outras usuárias pela tela de gestão
+     (necessária para a aba **Usuárias** do painel admin funcionar)
 
 Isso cria as tabelas `profiles`, `anamneses`, `program_state`, `meals`, com **RLS**
 (cada usuária só acessa os próprios dados), a função de papel, o **trigger** que cria
@@ -83,7 +93,11 @@ Depois de criá-las, é só rodar o deploy de novo (novo push ou *Re-run* na aba
 | `profiles` | 1:1 com `auth.users` — nome, e-mail, **papel** (RBAC), avatar |
 | `anamneses` | respostas da triagem + `risk_level` / `requires_partner` |
 | `program_state` | dia, pontos, estágio, check-ins do dia, streak, `onboarded` |
-| `meals` | foto (base64) + nota de cada refeição registrada |
+| `meals` | foto (Storage) + nota de cada refeição registrada |
+| `modules` / `lessons` / `ebooks` | catálogo de conteúdo (Educação) |
+| `knowledge_entries` | base de conhecimento consumida pelo Chat de IA |
+| `lesson_progress` | aulas concluídas por usuária |
+| `chat_messages` | histórico de conversas do Chat |
 
 As fotos das refeições são enviadas para o **Supabase Storage** (bucket privado
 `meal-photos`, uma pasta por usuária), e a coluna `meals.image` guarda o caminho do

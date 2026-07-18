@@ -1,12 +1,91 @@
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
 import { Button } from '@/components/Button'
-import { EBOOKS, MAIN_MODULE, NUTRITION_LESSONS, RECIPE_LESSONS, type Lesson } from '@/data/lessons'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
+import * as db from '@/lib/db'
+import { demoContent } from '@/data/lessons'
+import { clsx } from '@/lib/utils'
 
-/** Área de Membros — Trilha de Aprendizado (RF07). */
+const CATEGORY_META: Record<string, { title: string; icon: string }> = {
+  nutrition: { title: 'Guia de Alimentos', icon: 'restaurant' },
+  recipe: { title: 'Receitas Butterfly', icon: 'emoji_food_beverage' },
+  mind: { title: 'Mente & Mindfulness', icon: 'self_improvement' },
+}
+const CATEGORY_ORDER = ['nutrition', 'recipe', 'mind']
+
+/** Área de Membros — Trilha de Aprendizado (RF07), agora vinda do banco. */
 export function Members() {
-  const progressRatio = MAIN_MODULE.completedLessons / MAIN_MODULE.totalLessons
+  const { profile } = useAuth()
+  const userId = profile?.id ?? null
+
+  const [modules, setModules] = useState<db.DbModule[]>([])
+  const [lessons, setLessons] = useState<db.DbLesson[]>([])
+  const [ebooks, setEbooks] = useState<db.DbEbook[]>([])
+  const [done, setDone] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<db.DbLesson | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (!isSupabaseConfigured || !userId) {
+      const demo = demoContent()
+      setModules(demo.modules)
+      setLessons(demo.lessons)
+      setEbooks(demo.ebooks)
+      setLoading(false)
+      return
+    }
+    ;(async () => {
+      try {
+        const [mods, less, ebs, doneIds] = await Promise.all([
+          db.listModules(),
+          db.listLessons(),
+          db.listEbooks(),
+          db.getDoneLessonIds(userId),
+        ])
+        if (!active) return
+        setModules(mods)
+        setLessons(less)
+        setEbooks(ebs)
+        setDone(doneIds)
+      } catch {
+        const demo = demoContent()
+        if (active) {
+          setModules(demo.modules)
+          setLessons(demo.lessons)
+          setEbooks(demo.ebooks)
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [userId])
+
+  function toggleDone(lessonId: string) {
+    setDone((prev) => {
+      const next = new Set(prev)
+      const willBeDone = !next.has(lessonId)
+      if (willBeDone) next.add(lessonId)
+      else next.delete(lessonId)
+      if (isSupabaseConfigured && userId) db.setLessonDone(userId, lessonId, willBeDone).catch(() => {})
+      return next
+    })
+  }
+
+  const featured = modules[0]
+  const featuredLessons = useMemo(
+    () => (featured ? lessons.filter((l) => l.moduleSlug === featured.slug) : []),
+    [lessons, featured],
+  )
+  const featuredDone = featuredLessons.filter((l) => done.has(l.id)).length
+  const featuredRatio = featuredLessons.length ? featuredDone / featuredLessons.length : 0
 
   return (
     <div className="pt-20 pb-32 px-container-padding animate-fade-in">
@@ -19,89 +98,268 @@ export function Members() {
         </p>
       </div>
 
-      {/* Módulo principal */}
-      <div className="surface-card overflow-hidden mb-5">
-        <div className="h-44 w-full bg-surface-container-high relative">
-          <img src={MAIN_MODULE.cover} alt="" className="w-full h-full object-cover" />
-        </div>
-        <div className="p-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary-fixed/60 px-3 py-1 font-label-md text-[12px] text-on-secondary-fixed-variant mb-3">
-            <Icon name="hub" fill className="text-[14px]" /> {MAIN_MODULE.tag}
-          </span>
-          <h3 className="font-headline-md text-headline-md text-on-surface mb-2">{MAIN_MODULE.title}</h3>
-          <p className="font-body-sm text-body-sm text-on-surface-variant mb-4">{MAIN_MODULE.description}</p>
+      {loading && <div className="surface-card h-64 animate-pulse bg-surface-container-low mb-5" />}
 
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-body-sm text-body-sm text-on-surface-variant">
-              Progresso: {MAIN_MODULE.completedLessons}/{MAIN_MODULE.totalLessons} Aulas
-            </span>
-            <span className="font-label-md text-label-md text-primary">{Math.round(progressRatio * 100)}%</span>
+      {/* Módulo em destaque */}
+      {featured && (
+        <div className="surface-card overflow-hidden mb-5">
+          <div className="h-44 w-full bg-surface-container-high relative">
+            {featured.cover && <img src={featured.cover} alt="" className="w-full h-full object-cover" />}
           </div>
-          <ProgressBar ratio={progressRatio} className="mb-4" />
+          <div className="p-5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary-fixed/60 px-3 py-1 font-label-md text-[12px] text-on-secondary-fixed-variant mb-3">
+              <Icon name="hub" fill className="text-[14px]" /> {featured.tag}
+            </span>
+            <h3 className="font-headline-md text-headline-md text-on-surface mb-2">{featured.title}</h3>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mb-4">{featured.description}</p>
 
-          <Button fullWidth icon="play_arrow">
-            Continuar Assistindo
-          </Button>
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                Progresso: {featuredDone}/{featuredLessons.length} Aulas
+              </span>
+              <span className="font-label-md text-label-md text-primary">
+                {Math.round(featuredRatio * 100)}%
+              </span>
+            </div>
+            <ProgressBar ratio={featuredRatio} className="mb-4" />
+
+            {featuredLessons.length > 0 && (
+              <div className="flex flex-col gap-2 mb-4">
+                {featuredLessons.map((l) => (
+                  <LessonRow key={l.id} l={l} done={done.has(l.id)} onOpen={() => setSelected(l)} compact />
+                ))}
+              </div>
+            )}
+
+            <Button fullWidth icon="play_arrow">
+              Continuar Assistindo
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Materiais complementares */}
-      <div className="rounded-xl bg-primary-container/15 border border-primary-container/30 p-5 mb-6">
-        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center mb-3">
-          <Icon name="menu_book" fill className="text-on-primary text-[20px]" />
+      {ebooks.length > 0 && (
+        <div className="rounded-xl bg-primary-container/15 border border-primary-container/30 p-5 mb-6">
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center mb-3">
+            <Icon name="menu_book" fill className="text-on-primary text-[20px]" />
+          </div>
+          <h3 className="font-headline-md text-[20px] text-on-surface mb-1">Materiais Complementares</h3>
+          <p className="font-body-sm text-body-sm text-on-surface-variant mb-4">
+            Baixe nossos e-books e guias práticos para aprofundar seu conhecimento.
+          </p>
+          <div className="flex flex-col gap-2">
+            {ebooks.map((e) => (
+              <button
+                key={e.id}
+                className="flex items-center justify-between rounded-xl bg-surface-container-lowest border border-outline-variant px-4 py-3 hover:border-primary transition-colors active:scale-[0.99]"
+              >
+                <span className="flex items-center gap-3">
+                  <Icon name="picture_as_pdf" className="text-secondary text-[22px]" />
+                  <span className="font-label-md text-label-md text-on-surface text-left">{e.title}</span>
+                </span>
+                <Icon name="download" className="text-on-surface-variant" />
+              </button>
+            ))}
+          </div>
         </div>
-        <h3 className="font-headline-md text-[20px] text-on-surface mb-1">Materiais Complementares</h3>
-        <p className="font-body-sm text-body-sm text-on-surface-variant mb-4">
-          Baixe nossos e-books e guias práticos para aprofundar seu conhecimento e aplicar no dia a dia.
-        </p>
-        <div className="flex flex-col gap-2">
-          {EBOOKS.map((e) => (
-            <button
-              key={e.id}
-              className="flex items-center justify-between rounded-xl bg-surface-container-lowest border border-outline-variant px-4 py-3 hover:border-primary transition-colors active:scale-[0.99]"
-            >
-              <span className="flex items-center gap-3">
-                <Icon name="picture_as_pdf" className="text-secondary text-[22px]" />
-                <span className="font-label-md text-label-md text-on-surface">{e.title}</span>
-              </span>
-              <Icon name="download" className="text-on-surface-variant" />
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
-      <LessonGroup icon="restaurant" title="Guia de Alimentos" lessons={NUTRITION_LESSONS} />
-      <LessonGroup icon="emoji_food_beverage" title="Receitas Butterfly" lessons={RECIPE_LESSONS} />
+      {/* Grupos por categoria */}
+      {CATEGORY_ORDER.map((cat) => {
+        const items = lessons.filter((l) => l.category === cat)
+        if (items.length === 0) return null
+        const meta = CATEGORY_META[cat]
+        return (
+          <section key={cat} className="mb-6">
+            <h3 className="font-headline-md text-[22px] text-on-surface mb-3 flex items-center gap-2">
+              <Icon name={meta.icon} fill className="text-secondary text-[22px]" /> {meta.title}
+            </h3>
+            <div className="flex flex-col gap-3">
+              {items.map((l) => (
+                <LessonRow key={l.id} l={l} done={done.has(l.id)} onOpen={() => setSelected(l)} />
+              ))}
+            </div>
+          </section>
+        )
+      })}
+
+      {selected && (
+        <LessonDetail
+          key={selected.id}
+          lesson={selected}
+          done={done.has(selected.id)}
+          onToggle={() => toggleDone(selected.id)}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   )
 }
 
-function LessonGroup({ icon, title, lessons }: { icon: string; title: string; lessons: Lesson[] }) {
+function LessonRow({
+  l,
+  done,
+  onOpen,
+  compact,
+}: {
+  l: db.DbLesson
+  done: boolean
+  onOpen: () => void
+  compact?: boolean
+}) {
   return (
-    <section className="mb-6">
-      <h3 className="font-headline-md text-[22px] text-on-surface mb-3 flex items-center gap-2">
-        <Icon name={icon} fill className="text-secondary text-[22px]" /> {title}
-      </h3>
-      <div className="flex flex-col gap-3">
-        {lessons.map((l) => (
-          <button
-            key={l.id}
-            className="flex gap-3 surface-card p-3 text-left hover:border-primary-container transition-colors active:scale-[0.99]"
-          >
-            <img src={l.thumbnail} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="font-label-md text-label-md text-on-surface truncate">{l.title}</span>
-                {l.done && <Icon name="check_circle" fill className="text-primary text-[16px] shrink-0" />}
-              </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">{l.description}</p>
-              <span className="flex items-center gap-1 font-body-sm text-[12px] text-on-surface-variant mt-1">
-                <Icon name="schedule" className="text-[14px]" /> {l.duration}
-              </span>
-            </div>
-          </button>
-        ))}
+    <button
+      onClick={onOpen}
+      className={clsx(
+        'flex gap-3 text-left transition-all active:scale-[0.99]',
+        compact
+          ? 'items-center rounded-lg p-2 hover:bg-surface-container-low'
+          : 'surface-card p-3 hover:border-primary-container',
+      )}
+    >
+      {!compact && l.thumbnail && (
+        <img src={l.thumbnail} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
+      )}
+      {compact && (
+        <span
+          className={clsx(
+            'w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors',
+            done ? 'bg-primary border-primary text-on-primary' : 'border-outline-variant text-outline',
+          )}
+        >
+          <Icon name={done ? 'check' : 'play_arrow'} fill className="text-[18px]" />
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-label-md text-label-md text-on-surface truncate">{l.title}</span>
+          {!compact && done && <Icon name="check_circle" fill className="text-primary text-[16px] shrink-0" />}
+        </div>
+        {!compact && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">{l.description}</p>
+        )}
+        <span className="flex items-center gap-1 font-body-sm text-[12px] text-on-surface-variant mt-1">
+          <Icon name="schedule" className="text-[14px]" /> {l.duration}
+          {compact && done && <span className="text-primary ml-1">· concluída</span>}
+        </span>
       </div>
-    </section>
+    </button>
   )
+}
+
+/** Detalhe da aula: vídeo (YouTube) + texto completo + marcar concluída. */
+function LessonDetail({
+  lesson,
+  done,
+  onToggle,
+  onClose,
+}: {
+  lesson: db.DbLesson
+  done: boolean
+  onToggle: () => void
+  onClose: () => void
+}) {
+  const videoId = youtubeId(lesson.videoUrl)
+  const [playing, setPlaying] = useState(false)
+  // Portal para o body: escapa do stacking context da tela e cobre a navegação.
+  return createPortal(
+    <div className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm animate-fade-in">
+      <div className="absolute inset-0 mx-auto max-w-[520px] bg-surface flex flex-col">
+        {/* Cabeçalho */}
+        <div className="flex items-center gap-2 px-2 h-16 pt-safe border-b border-outline-variant/60 shrink-0">
+          <button
+            onClick={onClose}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high active:scale-95"
+            aria-label="Voltar"
+          >
+            <Icon name="arrow_back" />
+          </button>
+          <span className="font-label-md text-label-md text-on-surface-variant">Aula</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {/* Player de vídeo embutido (YouTube) */}
+          <div className="bg-black">
+            {playing && videoId ? (
+              <div className="relative w-full aspect-video">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                  title={lesson.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => videoId && setPlaying(true)}
+                disabled={!videoId}
+                aria-label="Reproduzir vídeo"
+                className="relative w-full aspect-video block group bg-surface-container-high"
+              >
+                <img
+                  src={videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : lesson.thumbnail}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {videoId && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <span className="w-16 h-16 rounded-full bg-on-primary/90 flex items-center justify-center shadow-ambient-lg group-active:scale-95 transition-transform">
+                      <Icon name="play_arrow" fill className="text-primary text-[36px]" />
+                    </span>
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+
+          <div className="p-container-padding">
+            <h2 className="font-headline-md text-[22px] font-semibold text-on-surface mb-1">{lesson.title}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <span className="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant">
+                <Icon name="schedule" className="text-[16px]" /> {lesson.duration}
+                {done && <span className="text-primary ml-2">· concluída</span>}
+              </span>
+              {videoId && (
+                <a
+                  href={lesson.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-label-md text-[13px] text-on-surface-variant hover:text-primary"
+                >
+                  Abrir no YouTube <Icon name="open_in_new" className="text-[15px]" />
+                </a>
+              )}
+            </div>
+
+            <p className="font-body-md text-body-md text-on-surface whitespace-pre-line leading-relaxed">
+              {lesson.content || lesson.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Ação */}
+        <div className="p-container-padding border-t border-outline-variant/60 pb-safe shrink-0">
+          <Button
+            fullWidth
+            icon={done ? 'check_circle' : 'radio_button_unchecked'}
+            variant={done ? 'tonal' : 'primary'}
+            onClick={onToggle}
+          >
+            {done ? 'Concluída — desmarcar' : 'Marcar como concluída'}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+function youtubeId(url: string): string | null {
+  if (!url) return null
+  const m = /[?&]v=([^&]+)/.exec(url) || /youtu\.be\/([^?]+)/.exec(url)
+  return m ? m[1] : null
 }

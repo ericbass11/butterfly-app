@@ -31,14 +31,25 @@ interface ProgramContextValue {
 const ProgramContext = createContext<ProgramContextValue | undefined>(undefined)
 
 export function ProgramProvider({ children }: { children: ReactNode }) {
-  const { profile } = useAuth()
+  const { profile, loading: authLoading } = useAuth()
   const userId = profile?.id ?? null
 
   const [program, setProgram] = useState<ProgramState>(() => createInitialProgram())
-  const [ready, setReady] = useState(!isSupabaseConfigured)
   const [onboarded, setOnboarded] = useState(false)
+  // Para QUAL usuária o estado atual foi carregado ('demo' no modo local).
+  // Evita a corrida que reenviava o usuário à anamnese durante o carregamento.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
 
-  // Carregamento inicial do estado do programa
+  // `ready` é DERIVADO (síncrono com userId): nunca fica "true" com dados de
+  // outra usuária ou antes de a sessão resolver.
+  const ready = useMemo(() => {
+    if (!isSupabaseConfigured) return loadedFor === 'demo'
+    if (authLoading) return false
+    if (!userId) return true
+    return loadedFor === userId
+  }, [loadedFor, authLoading, userId])
+
+  // Carregamento do estado do programa
   useEffect(() => {
     let active = true
 
@@ -46,37 +57,39 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       const existing = store.getProgram()
       setProgram(existing ? refreshProgram(existing) : createInitialProgram())
       setOnboarded(store.isOnboarded())
-      setReady(true)
+      setLoadedFor('demo')
       return
     }
 
-    // Supabase: só carrega quando há usuária autenticada
+    // Aguarda a sessão resolver antes de decidir qualquer rota
+    if (authLoading) return
+
+    // Sem usuária autenticada: nada a carregar
     if (!userId) {
-      setReady(true)
       setOnboarded(false)
       setProgram(createInitialProgram())
       return
     }
 
-    setReady(false)
     ;(async () => {
       try {
-        const loaded = await db.getProgram(userId)
-        const ob = await db.isOnboarded(userId)
+        const [loaded, ob] = await Promise.all([db.getProgram(userId), db.isOnboarded(userId)])
         if (!active) return
         setProgram(loaded ? refreshProgram(loaded) : createInitialProgram())
         setOnboarded(ob)
+        setLoadedFor(userId)
       } catch {
-        if (active) setProgram(createInitialProgram())
-      } finally {
-        if (active) setReady(true)
+        if (active) {
+          setProgram(createInitialProgram())
+          setLoadedFor(userId) // resolvido (mesmo com erro) para não travar a UI
+        }
       }
     })()
 
     return () => {
       active = false
     }
-  }, [userId])
+  }, [userId, authLoading])
 
   // Persiste o estado do programa (debounce leve para agrupar cliques rápidos)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)

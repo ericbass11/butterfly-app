@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { clsx } from '@/lib/utils'
@@ -19,7 +19,7 @@ const highlights = [
 
 export function Onboarding() {
   const navigate = useNavigate()
-  const { completeOnboarding } = useProgram()
+  const { completeOnboarding, onboarded, ready } = useProgram()
   const [step, setStep] = useState<Step>('welcome')
   const [form, setForm] = useState<Anamnese>(emptyAnamnese)
   const [result, setResult] = useState<TriageResult | null>(null)
@@ -48,6 +48,11 @@ export function Onboarding() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // Anamnese já concluída anteriormente: não pede de novo.
+  if (ready && onboarded && step === 'welcome') {
+    return <Navigate to="/app" replace />
   }
 
   if (step === 'result' && result?.level === 'blocked') {

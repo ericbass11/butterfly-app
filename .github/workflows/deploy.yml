@@ -1,14 +1,18 @@
 name: Deploy PWA to GitHub Pages
 
 # Publica o build de produção do App Butterfly no GitHub Pages.
-# Publica SOMENTE a partir da main (o site em produção sai da main). Publicar
-# também de branches fazia dois runs disputarem o mesmo ambiente `github-pages`
-# (que só aceita um deploy por vez): um vencia e publicava, o outro falhava na
-# hora — o "X vermelho" fantasma no Actions. Um único gatilho resolve.
+#
+# IMPORTANTE: o ambiente `github-pages` deste repo só autoriza deploy a partir
+# da branch de desenvolvimento (política de "Deployment branches"). Deploys da
+# main são REJEITADOS no portão do ambiente (job `deploy` falha em ~2s, sem
+# runner) — era esse o "X vermelho" recorrente, enquanto os runs da branch é que
+# realmente publicavam o site (todos verdes). Por isso publicamos a partir da
+# branch. Para publicar a partir da main, libere a main em
+# Settings → Environments → github-pages → Deployment branches.
 on:
   push:
     branches:
-      - main
+      - claude/app-butterfly-mobile-pwa-emj1xk
   workflow_dispatch:
 
 # Permissões necessárias para o deploy via GitHub Pages

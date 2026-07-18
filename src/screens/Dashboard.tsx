@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/context/AuthContext'
 import { useProgram } from '@/context/ProgramContext'
 import { TopBar } from '@/components/TopBar'
@@ -9,6 +10,7 @@ import { MealCapture } from '@/components/MealCapture'
 import { HABITS, PROGRAM_LENGTH, programProgress, stageProgress } from '@/lib/gamification'
 import { MOTIVATIONAL_QUOTES } from '@/data/lessons'
 import { clsx } from '@/lib/utils'
+import { fadeUpItem, staggerContainer } from '@/lib/motion'
 
 /** Dashboard de Evolução — tela principal (RF04, RF05, RF06). */
 export function Dashboard() {
@@ -93,15 +95,22 @@ export function Dashboard() {
           <h3 className="font-headline-md text-headline-md text-on-surface">Check-in Diário</h3>
           <span className="font-label-md text-label-md text-primary">+{todayPoints} pts hoje</span>
         </div>
-        <div className="flex flex-col gap-3">
+        <motion.div
+          className="flex flex-col gap-3"
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+        >
           {HABITS.map((h) => {
             const active = program.todayCheckins[h.key] === true
             return (
-              <button
+              <motion.button
                 key={h.key}
+                variants={fadeUpItem}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => toggleHabit(h.key)}
                 className={clsx(
-                  'group flex items-center justify-between p-4 rounded-xl border transition-all active:scale-[0.98]',
+                  'group flex items-center justify-between p-4 rounded-xl border transition-colors',
                   active
                     ? 'bg-primary border-primary text-on-primary'
                     : 'bg-surface-container-lowest border-outline-variant hover:border-primary-container',
@@ -130,10 +139,10 @@ export function Dashboard() {
                   fill={active}
                   className={clsx('text-[24px]', active ? 'text-on-primary' : 'text-outline-variant')}
                 />
-              </button>
+              </motion.button>
             )
           })}
-        </div>
+        </motion.div>
       </section>
 
       {/* Upload de refeição */}

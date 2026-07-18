@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import type { Stage } from '@/lib/types'
 import { stageMeta } from '@/lib/gamification'
 import { clsx } from '@/lib/utils'
@@ -27,7 +28,10 @@ export function ButterflyAvatar({ stage, size = 'md', animated = true, className
   const s = sizes[size]
   const isButterfly = stage === 'borboleta'
   return (
-    <div
+    <motion.div
+      initial={{ scale: 0.85, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={clsx(
         'relative rounded-full flex items-center justify-center',
         'bg-gradient-to-br from-secondary-fixed to-primary-fixed/60 shadow-ambient-lg',
@@ -36,16 +40,20 @@ export function ButterflyAvatar({ stage, size = 'md', animated = true, className
       )}
     >
       <div className="absolute inset-1 rounded-full bg-surface-container-lowest/70 backdrop-blur-sm" />
-      <Icon
-        name={stageIcon[stage]}
-        fill
-        className={clsx(
-          'relative z-10 text-primary',
-          s.icon,
-          animated && isButterfly && 'animate-flutter',
-        )}
-      />
-    </div>
+      <motion.span
+        key={stage}
+        initial={{ scale: 0.5, rotate: -12, opacity: 0 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 16 }}
+        className="relative z-10"
+      >
+        <Icon
+          name={stageIcon[stage]}
+          fill
+          className={clsx('text-primary', s.icon, animated && isButterfly && 'animate-flutter')}
+        />
+      </motion.span>
+    </motion.div>
   )
 }
 

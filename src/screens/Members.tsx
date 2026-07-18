@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -9,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import * as db from '@/lib/db'
 import { demoContent } from '@/data/lessons'
 import { clsx } from '@/lib/utils'
+import { backdropVariants, fadeUpItem, sheetVariants, staggerContainer } from '@/lib/motion'
 
 const CATEGORY_META: Record<string, { title: string; icon: string }> = {
   nutrition: { title: 'Guia de Alimentos', icon: 'restaurant' },
@@ -175,24 +177,32 @@ export function Members() {
             <h3 className="font-headline-md text-[22px] text-on-surface mb-3 flex items-center gap-2">
               <Icon name={meta.icon} fill className="text-secondary text-[22px]" /> {meta.title}
             </h3>
-            <div className="flex flex-col gap-3">
+            <motion.div
+              className="flex flex-col gap-3"
+              variants={staggerContainer}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, amount: 0.15 }}
+            >
               {items.map((l) => (
                 <LessonRow key={l.id} l={l} done={done.has(l.id)} onOpen={() => setSelected(l)} />
               ))}
-            </div>
+            </motion.div>
           </section>
         )
       })}
 
-      {selected && (
-        <LessonDetail
-          key={selected.id}
-          lesson={selected}
-          done={done.has(selected.id)}
-          onToggle={() => toggleDone(selected.id)}
-          onClose={() => setSelected(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selected && (
+          <LessonDetail
+            key={selected.id}
+            lesson={selected}
+            done={done.has(selected.id)}
+            onToggle={() => toggleDone(selected.id)}
+            onClose={() => setSelected(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -209,10 +219,12 @@ function LessonRow({
   compact?: boolean
 }) {
   return (
-    <button
+    <motion.button
+      variants={fadeUpItem}
+      whileTap={{ scale: 0.99 }}
       onClick={onOpen}
       className={clsx(
-        'flex gap-3 text-left transition-all active:scale-[0.99]',
+        'flex gap-3 text-left transition-colors',
         compact
           ? 'items-center rounded-lg p-2 hover:bg-surface-container-low'
           : 'surface-card p-3 hover:border-primary-container',
@@ -244,7 +256,7 @@ function LessonRow({
           {compact && done && <span className="text-primary ml-1">· concluída</span>}
         </span>
       </div>
-    </button>
+    </motion.button>
   )
 }
 
@@ -264,8 +276,20 @@ function LessonDetail({
   const [playing, setPlaying] = useState(false)
   // Portal para o body: escapa do stacking context da tela e cobre a navegação.
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm animate-fade-in">
-      <div className="absolute inset-0 mx-auto max-w-[520px] bg-surface flex flex-col">
+    <motion.div
+      variants={backdropVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm"
+    >
+      <motion.div
+        variants={sheetVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        className="absolute inset-0 mx-auto max-w-[520px] bg-surface flex flex-col"
+      >
         {/* Cabeçalho */}
         <div className="flex items-center gap-2 px-2 h-16 pt-safe border-b border-outline-variant/60 shrink-0">
           <button
@@ -352,8 +376,8 @@ function LessonDetail({
             {done ? 'Concluída — desmarcar' : 'Marcar como concluída'}
           </Button>
         </div>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>,
     document.body,
   )
 }

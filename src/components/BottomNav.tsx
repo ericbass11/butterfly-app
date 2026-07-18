@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { clsx } from '@/lib/utils'
 import { Icon } from './Icon'
 
@@ -21,14 +22,19 @@ export function BottomNav() {
           {({ isActive }) => (
             <span
               className={clsx(
-                'flex flex-col items-center justify-center rounded-full px-4 py-1 transition-all active:scale-90',
-                isActive
-                  ? 'text-on-primary bg-primary-container'
-                  : 'text-on-surface-variant hover:bg-surface-container-high',
+                'relative flex flex-col items-center justify-center rounded-full px-4 py-1 transition-colors active:scale-90',
+                isActive ? 'text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high',
               )}
             >
-              <Icon name={item.icon} fill={isActive} className="text-[24px]" />
-              <span className="font-label-md text-[10px] mt-1 leading-none">{item.label}</span>
+              {isActive && (
+                <motion.span
+                  layoutId="navPill"
+                  className="absolute inset-0 rounded-full bg-primary-container"
+                  transition={{ type: 'spring', stiffness: 480, damping: 34 }}
+                />
+              )}
+              <Icon name={item.icon} fill={isActive} className="relative z-10 text-[24px]" />
+              <span className="relative z-10 font-label-md text-[10px] mt-1 leading-none">{item.label}</span>
             </span>
           )}
         </NavLink>

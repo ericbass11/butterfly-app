@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { motion } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
@@ -10,6 +11,7 @@ import * as db from '@/lib/db'
 import { clsx } from '@/lib/utils'
 import { demoContent } from '@/data/lessons'
 import { KNOWLEDGE_BASE } from '@/data/knowledge'
+import { sheetVariants } from '@/lib/motion'
 
 type Tab = 'lessons' | 'ebooks' | 'knowledge' | 'modules' | 'users'
 
@@ -195,8 +197,18 @@ function FormModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm animate-fade-in">
-      <div className="absolute inset-0 mx-auto max-w-[520px] bg-surface flex flex-col">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[70] bg-inverse-surface/30 backdrop-blur-sm"
+    >
+      <motion.div
+        variants={sheetVariants}
+        initial="initial"
+        animate="animate"
+        className="absolute inset-0 mx-auto max-w-[520px] bg-surface flex flex-col"
+      >
         <div className="flex items-center gap-2 px-2 h-16 pt-safe border-b border-outline-variant/60 shrink-0">
           <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high active:scale-95" aria-label="Voltar">
             <Icon name="arrow_back" />
@@ -250,8 +262,8 @@ function FormModal({
             {saving ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>,
     document.body,
   )
 }

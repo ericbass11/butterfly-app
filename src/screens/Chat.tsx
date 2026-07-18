@@ -85,12 +85,12 @@ export function Chat() {
       </div>
 
       {/* Sugestões rápidas */}
-      <div className="px-container-padding pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="px-container-padding pb-2 flex flex-wrap gap-2">
         {SUGGESTED_QUESTIONS.map((q) => (
           <button
             key={q}
             onClick={() => send(q)}
-            className="shrink-0 rounded-full bg-surface-container border border-outline-variant px-4 py-2 font-body-sm text-body-sm text-on-surface-variant hover:border-primary transition-colors active:scale-95"
+            className="rounded-full bg-surface-container border border-outline-variant px-4 py-2 font-body-sm text-body-sm text-on-surface-variant hover:border-primary transition-colors active:scale-95"
           >
             {q}
           </button>

@@ -1,5 +1,10 @@
 import { supabase } from './supabase'
 import type { Anamnese, MealEntry, Profile, ProgramState, Role, Stage, TriageResult } from './types'
+import { dataUrlToBlob, relativeDay } from './utils'
+import { DAILY_MAX_POINTS } from './gamification'
+
+const MEALS_BUCKET = 'meal-photos'
+const SIGNED_URL_TTL = 60 * 60 // 1h
 
 /**
  * Camada de acesso a dados (Supabase Postgres).
@@ -155,6 +160,25 @@ export async function setOnboarded(userId: string, value: boolean): Promise<void
 
 // ---------- Meals ----------
 
+/** Resolve o campo `image` de uma refeição para uma URL exibível.
+ *  Compatível com dois formatos: base64 legado ("data:...") e caminho no Storage. */
+async function resolveMealImages(rows: { image: string | null }[]): Promise<string[]> {
+  const paths = rows.map((r) => r.image ?? '').filter((v) => v && !v.startsWith('data:'))
+  const signedByPath = new Map<string, string>()
+  if (paths.length > 0) {
+    const { data } = await client().storage.from(MEALS_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL)
+    for (const item of data ?? []) {
+      if (item.signedUrl && item.path) signedByPath.set(item.path, item.signedUrl)
+    }
+  }
+  return rows.map((r) => {
+    const img = r.image ?? ''
+    if (!img) return ''
+    if (img.startsWith('data:')) return img
+    return signedByPath.get(img) ?? ''
+  })
+}
+
 export async function listMeals(userId: string): Promise<MealEntry[]> {
   const { data, error } = await client()
     .from('meals')
@@ -163,9 +187,11 @@ export async function listMeals(userId: string): Promise<MealEntry[]> {
     .order('created_at', { ascending: false })
     .limit(60)
   if (error) throw error
-  return (data ?? []).map((m) => ({
+  const rows = data ?? []
+  const urls = await resolveMealImages(rows)
+  return rows.map((m, i) => ({
     id: m.id,
-    dataUrl: m.image ?? '',
+    dataUrl: urls[i],
     note: m.note ?? '',
     createdAt: m.created_at,
   }))
@@ -176,11 +202,105 @@ export async function insertMeal(
   dataUrl: string,
   note: string,
 ): Promise<MealEntry> {
+  // Faz upload da foto para o bucket privado (pasta = id da usuária) e guarda o caminho.
+  const blob = dataUrlToBlob(dataUrl)
+  const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`
+  const { error: upErr } = await client()
+    .storage.from(MEALS_BUCKET)
+    .upload(path, blob, { contentType: blob.type, upsert: false })
+  if (upErr) throw upErr
+
   const { data, error } = await client()
     .from('meals')
-    .insert({ user_id: userId, image: dataUrl, note })
+    .insert({ user_id: userId, image: path, note })
     .select()
     .single()
   if (error) throw error
-  return { id: data.id, dataUrl: data.image ?? '', note: data.note ?? '', createdAt: data.created_at }
+
+  const { data: signed } = await client().storage
+    .from(MEALS_BUCKET)
+    .createSignedUrl(path, SIGNED_URL_TTL)
+  return {
+    id: data.id,
+    dataUrl: signed?.signedUrl ?? '',
+    note: data.note ?? '',
+    createdAt: data.created_at,
+  }
+}
+
+// ---------- Painéis (Parceiro / Admin) ----------
+
+export interface RosterPatient {
+  id: string
+  name: string
+  day: number
+  stage: Stage
+  points: number
+  adherence: number // 0..1
+  risk: 'clear' | 'attention' | 'blocked'
+  lastCheckin: string
+}
+
+/** Lista pacientes com estado do programa e risco (leitura via RLS de parceiro/admin). */
+export async function getRoster(): Promise<RosterPatient[]> {
+  const sb = client()
+  const [profilesRes, programRes, anamnesesRes] = await Promise.all([
+    sb.from('profiles').select('id, name, role').eq('role', 'patient'),
+    sb.from('program_state').select('*'),
+    sb.from('anamneses').select('user_id, risk_level, created_at').order('created_at', { ascending: false }),
+  ])
+  if (profilesRes.error) throw profilesRes.error
+
+  const programByUser = new Map<string, Record<string, unknown>>()
+  for (const p of programRes.data ?? []) programByUser.set(p.user_id as string, p)
+
+  // risco = anamnese mais recente por usuária
+  const riskByUser = new Map<string, string>()
+  for (const a of anamnesesRes.data ?? []) {
+    if (!riskByUser.has(a.user_id as string)) riskByUser.set(a.user_id as string, (a.risk_level as string) ?? 'clear')
+  }
+
+  return (profilesRes.data ?? []).map((prof) => {
+    const prog = programByUser.get(prof.id) as
+      | { day: number; points: number; stage: Stage; last_checkin_date: string | null }
+      | undefined
+    const day = prog?.day ?? 0
+    const points = prog?.points ?? 0
+    const denom = Math.max(day, 1) * DAILY_MAX_POINTS
+    return {
+      id: prof.id,
+      name: (prof.name as string) || 'Sem nome',
+      day,
+      stage: (prog?.stage ?? 'larva') as Stage,
+      points,
+      adherence: Math.min(points / denom, 1),
+      risk: (riskByUser.get(prof.id) ?? 'clear') as RosterPatient['risk'],
+      lastCheckin: relativeDay(prog?.last_checkin_date ?? null),
+    }
+  })
+}
+
+export interface AdminStats {
+  totalPatients: number
+  activeToday: number // % que fez check-in hoje
+  completionRate: number // % que chegou a Borboleta
+  stageCounts: { larva: number; casulo: number; borboleta: number }
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  const roster = await getRoster()
+  const total = roster.length
+  const activeToday = roster.filter((r) => r.lastCheckin === 'Hoje').length
+  const borboleta = roster.filter((r) => r.stage === 'borboleta').length
+  return {
+    totalPatients: total,
+    activeToday: total ? activeToday / total : 0,
+    completionRate: total ? borboleta / total : 0,
+    stageCounts: {
+      larva: roster.filter((r) => r.stage === 'larva').length,
+      casulo: roster.filter((r) => r.stage === 'casulo').length,
+      borboleta,
+    },
+  }
 }

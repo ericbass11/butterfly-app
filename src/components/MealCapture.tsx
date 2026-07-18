@@ -6,7 +6,7 @@ import { fileToDataUrl } from '@/lib/utils'
 interface Props {
   open: boolean
   onClose: () => void
-  onSave: (dataUrl: string, note: string) => void
+  onSave: (dataUrl: string, note: string) => Promise<void> | void
 }
 
 /** Modal de upload de evidência da refeição (RF05). */
@@ -14,6 +14,8 @@ export function MealCapture({ open, onClose, onSave }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!open) return null
 
@@ -25,13 +27,21 @@ export function MealCapture({ open, onClose, onSave }: Props) {
   function reset() {
     setPreview(null)
     setNote('')
+    setError(null)
   }
 
-  function save() {
-    if (preview) {
-      onSave(preview, note.trim())
+  async function save() {
+    if (!preview || saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave(preview, note.trim())
       reset()
       onClose()
+    } catch {
+      setError('Não foi possível salvar a foto. Verifique o bucket de Storage e tente novamente.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -67,14 +77,20 @@ export function MealCapture({ open, onClose, onSave }: Props) {
           className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none font-body-md text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none mb-4"
         />
 
+        {error && (
+          <p className="flex items-center gap-2 rounded-xl bg-error-container/50 text-on-error-container px-4 py-3 font-body-sm text-body-sm mb-3">
+            <Icon name="error" fill className="text-[18px] shrink-0" /> {error}
+          </p>
+        )}
+
         <div className="flex gap-3">
-          {preview && (
+          {preview && !saving && (
             <Button variant="ghost" icon="refresh" onClick={() => inputRef.current?.click()}>
               Trocar
             </Button>
           )}
-          <Button fullWidth icon="check" onClick={save} disabled={!preview}>
-            Salvar e pontuar
+          <Button fullWidth icon={saving ? 'progress_activity' : 'check'} onClick={save} disabled={!preview || saving}>
+            {saving ? 'Salvando…' : 'Salvar e pontuar'}
           </Button>
         </div>
       </div>

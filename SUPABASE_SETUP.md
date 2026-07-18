@@ -14,12 +14,15 @@ Siga os 3 passos abaixo para ativar o modo Supabase com **dados reais**.
 No painel do seu projeto Supabase:
 
 1. Vá em **SQL Editor → New query**
-2. Cole todo o conteúdo de [`supabase/migrations/0001_init.sql`](./supabase/migrations/0001_init.sql)
-3. Clique em **Run**
+2. Rode, em ordem:
+   - [`supabase/migrations/0001_init.sql`](./supabase/migrations/0001_init.sql) — tabelas + RLS + trigger
+   - [`supabase/migrations/0002_storage_and_panels.sql`](./supabase/migrations/0002_storage_and_panels.sql)
+     — bucket privado **`meal-photos`** (fotos das refeições) e RLS para os painéis de
+     Parceiro/Admin lerem os dados
 
 Isso cria as tabelas `profiles`, `anamneses`, `program_state`, `meals`, com **RLS**
-(cada usuária só acessa os próprios dados), a função de papel e o **trigger** que cria
-o perfil automaticamente no cadastro.
+(cada usuária só acessa os próprios dados), a função de papel, o **trigger** que cria
+o perfil no cadastro, e o **bucket de Storage** das fotos.
 
 ## 2. Ajustar a autenticação (para testes fluidos)
 
@@ -82,5 +85,7 @@ Depois de criá-las, é só rodar o deploy de novo (novo push ou *Re-run* na aba
 | `program_state` | dia, pontos, estágio, check-ins do dia, streak, `onboarded` |
 | `meals` | foto (base64) + nota de cada refeição registrada |
 
-Fotos hoje são salvas em base64 na coluna `meals.image`. Um próximo passo natural é
-migrar para o **Supabase Storage** (bucket privado + signed URLs).
+As fotos das refeições são enviadas para o **Supabase Storage** (bucket privado
+`meal-photos`, uma pasta por usuária), e a coluna `meals.image` guarda o caminho do
+arquivo — a exibição usa **signed URLs** temporárias. Registros antigos em base64
+continuam funcionando (compatibilidade).

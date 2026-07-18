@@ -18,14 +18,19 @@ import type { ChatMessage } from './types'
  * que garante que nenhum alimento proibido seja recomendado.
  */
 
+/** Normaliza para busca: minúsculas e sem acentos (á→a, ç→c...). */
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 function retrieve(query: string, entries: KnowledgeEntry[]): KnowledgeEntry | null {
-  const q = query.toLowerCase()
+  const q = norm(query)
   let best: { entry: KnowledgeEntry; score: number } | null = null
   for (const entry of entries) {
-    const score = entry.keywords.reduce(
-      (acc, kw) => (q.includes(kw.toLowerCase()) ? acc + 1 : acc),
-      0,
-    )
+    const score = entry.keywords.reduce((acc, kw) => (q.includes(norm(kw)) ? acc + 1 : acc), 0)
     if (score > 0 && (!best || score > best.score)) best = { entry, score }
   }
   return best?.entry ?? null

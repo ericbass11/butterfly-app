@@ -38,6 +38,11 @@ export const store = {
   isOnboarded: () => read<boolean>(KEYS.onboarded) === true,
   setOnboarded: (v: boolean) => write(KEYS.onboarded, v),
 
+  // Dica por usuária (modo Supabase): uma vez concluído o onboarding, lembramos
+  // localmente para não redirecionar à anamnese em reload/erro de rede.
+  getOnboardedHint: (userId: string) => read<boolean>(`butterfly.onboarded.${userId}`) === true,
+  setOnboardedHint: (userId: string, v: boolean) => write(`butterfly.onboarded.${userId}`, v),
+
   getProgram: () => read<ProgramState>(KEYS.program),
   setProgram: (s: ProgramState) => write(KEYS.program, s),
 

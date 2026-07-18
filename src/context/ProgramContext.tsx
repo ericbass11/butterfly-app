@@ -88,17 +88,26 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Dica local: se já concluiu o onboarding antes, assume concluído de imediato
+    // (evita flash da anamnese em reload/nova aba enquanto o banco carrega).
+    const hint = store.getOnboardedHint(userId)
+    if (hint) setOnboarded(true)
+
     ;(async () => {
       try {
         const [loaded, ob] = await Promise.all([db.getProgram(userId), db.isOnboarded(userId)])
         if (!active) return
         setProgram(applyBadges(loaded ? refreshProgram(loaded) : createInitialProgram(), false))
-        setOnboarded(ob)
+        const finalOb = ob || hint
+        setOnboarded(finalOb)
+        if (finalOb) store.setOnboardedHint(userId, true)
         setLoadedFor(userId)
       } catch {
         if (active) {
+          // Erro de rede: NÃO manda para a anamnese — respeita a dica local.
           setProgram(createInitialProgram())
-          setLoadedFor(userId) // resolvido (mesmo com erro) para não travar a UI
+          setOnboarded(hint)
+          setLoadedFor(userId)
         }
       }
     })()
@@ -186,6 +195,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       if (isSupabaseConfigured && userId) {
         await db.saveAnamnese(userId, anamnese, triage)
         await db.upsertProgram(userId, program.meals.length ? program : base, true)
+        store.setOnboardedHint(userId, true)
       } else {
         store.setAnamnese(anamnese)
         store.setOnboarded(true)

@@ -69,9 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: sub } = supabase!.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase!.auth.onAuthStateChange((event, session) => {
       if (!active) return
-      setProfile(session?.user ? profileFromUser(session.user) : null)
+      if (session?.user) {
+        setProfile(profileFromUser(session.user))
+      } else if (event === 'SIGNED_OUT') {
+        // Só limpa em logout REAL — ignora nulos transitórios (foco, refresh de
+        // token) que antes derrubavam o usuário para a tela de login.
+        setProfile(null)
+      }
     })
 
     return () => {
@@ -143,8 +149,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile((prev) => {
       if (!prev) return prev
       const next = { ...prev, ...patch }
-      if (mode === 'demo') store.setProfile(next)
-      else import('@/lib/db').then((db) => db.updateProfile(next.id, patch)).catch(() => {})
+      if (mode === 'demo') {
+        store.setProfile(next)
+      } else {
+        // Sincroniza os METADADOS da sessão para a foto/nome persistirem em
+        // qualquer evento de auth, reload ou nova aba (fonte de verdade do
+        // perfil em memória). Também grava na tabela profiles (painéis/admin).
+        const data: Record<string, unknown> = {}
+        if (patch.name !== undefined) data.name = patch.name
+        if (patch.avatarUrl !== undefined) data.avatar_url = patch.avatarUrl
+        if (Object.keys(data).length > 0) supabase!.auth.updateUser({ data }).catch(() => {})
+        import('@/lib/db').then((db) => db.updateProfile(next.id, patch)).catch(() => {})
+      }
       return next
     })
   }, [])

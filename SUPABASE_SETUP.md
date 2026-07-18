@@ -29,6 +29,14 @@ No painel do seu projeto Supabase:
    - [`supabase/migrations/0005_admin_management.sql`](./supabase/migrations/0005_admin_management.sql)
      — permite que **admin** edite o papel de outras usuárias pela tela de gestão
      (necessária para a aba **Usuárias** do painel admin funcionar)
+   - [`supabase/migrations/0006_badges.sql`](./supabase/migrations/0006_badges.sql)
+     — coluna `badges` no `program_state` para guardar as **conquistas** desbloqueadas
+   - [`supabase/migrations/0007_avatars.sql`](./supabase/migrations/0007_avatars.sql)
+     — bucket público **`avatars`** para as **fotos de perfil** (personalização da conta)
+   - [`supabase/migrations/0008_fix_accents_chat.sql`](./supabase/migrations/0008_fix_accents_chat.sql)
+     — corrige a **acentuação** das respostas do Chat de IA (seed original sem acentos)
+   - [`supabase/migrations/0009_fix_accents_education.sql`](./supabase/migrations/0009_fix_accents_education.sql)
+     — corrige a **acentuação** de todo o conteúdo da Educação (módulos, aulas e e-books)
 
 Isso cria as tabelas `profiles`, `anamneses`, `program_state`, `meals`, com **RLS**
 (cada usuária só acessa os próprios dados), a função de papel, o **trigger** que cria

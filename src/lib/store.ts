@@ -38,6 +38,11 @@ export const store = {
   isOnboarded: () => read<boolean>(KEYS.onboarded) === true,
   setOnboarded: (v: boolean) => write(KEYS.onboarded, v),
 
+  // Dica por usuária (modo Supabase): uma vez concluído o onboarding, lembramos
+  // localmente para não redirecionar à anamnese em reload/erro de rede.
+  getOnboardedHint: (userId: string) => read<boolean>(`butterfly.onboarded.${userId}`) === true,
+  setOnboardedHint: (userId: string, v: boolean) => write(`butterfly.onboarded.${userId}`, v),
+
   getProgram: () => read<ProgramState>(KEYS.program),
   setProgram: (s: ProgramState) => write(KEYS.program, s),
 
@@ -56,23 +61,26 @@ export function createInitialProgram(): ProgramState {
     lastCheckinDate: null,
     meals: [],
     streak: 0,
+    badges: [],
   }
 }
 
 /** Normaliza o estado ao abrir o app: vira o dia se a data mudou. */
 export function refreshProgram(state: ProgramState): ProgramState {
   const today = todayKey()
+  const badges = state.badges ?? [] // compat. com estados antigos sem badges
   if (state.lastCheckinDate && state.lastCheckinDate !== today) {
     // Novo dia: zera os check-ins do dia e avança o contador do programa.
     const nextDay = Math.min(state.day + 1, PROGRAM_LENGTH)
     return {
       ...state,
+      badges,
       day: nextDay,
       todayCheckins: {},
       stage: stageForPoints(state.points, nextDay),
     }
   }
-  return { ...state, stage: stageForPoints(state.points, state.day) }
+  return { ...state, badges, stage: stageForPoints(state.points, state.day) }
 }
 
 export function createProfile(name: string, email: string, role: Role = 'patient'): Profile {

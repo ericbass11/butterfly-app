@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { fileToDataUrl } from '@/lib/utils'
+import { backdropVariants, sheetVariants } from '@/lib/motion'
 
 interface Props {
   open: boolean
@@ -17,8 +19,6 @@ export function MealCapture({ open, onClose, onSave }: Props) {
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  if (!open) return null
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -47,8 +47,22 @@ export function MealCapture({ open, onClose, onSave }: Props) {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-inverse-surface/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-[520px] bg-surface rounded-t-2xl p-container-padding pb-safe shadow-ambient-lg">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          variants={backdropVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-inverse-surface/40 backdrop-blur-sm"
+        >
+          <motion.div
+            variants={sheetVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="w-full max-w-[520px] bg-surface rounded-t-2xl p-container-padding pb-safe shadow-ambient-lg"
+          >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-headline-md text-[20px] font-semibold text-on-surface">Registrar refeição</h3>
           <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-container-high" aria-label="Fechar">
@@ -94,8 +108,10 @@ export function MealCapture({ open, onClose, onSave }: Props) {
             {saving ? 'Salvando…' : 'Salvar e pontuar'}
           </Button>
         </div>
-      </div>
-    </div>,
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body,
   )
 }

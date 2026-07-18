@@ -1,26 +1,73 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/context/AuthContext'
 import { useProgram } from '@/context/ProgramContext'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
 import { StageBadge } from '@/components/ButterflyAvatar'
+import { Metamorphosis } from '@/components/Metamorphosis'
 import { MealCapture } from '@/components/MealCapture'
+import {
+  AnimatedNumber,
+  BadgeToast,
+  Confetti,
+  DailyCompleteToast,
+  DailyRing,
+  HabitCheck,
+  StageCelebration,
+} from '@/components/Gamify'
 import { HABITS, PROGRAM_LENGTH, programProgress, stageProgress } from '@/lib/gamification'
+import type { Stage } from '@/lib/types'
 import { MOTIVATIONAL_QUOTES } from '@/data/lessons'
-import { clsx } from '@/lib/utils'
+import { staggerContainer } from '@/lib/motion'
 
 /** Dashboard de Evolução — tela principal (RF04, RF05, RF06). */
+const STAGE_ORDER: Stage[] = ['larva', 'casulo', 'borboleta']
+
 export function Dashboard() {
   const { profile } = useAuth()
-  const { program, toggleHabit, addMeal, todayPoints } = useProgram()
+  const { program, toggleHabit, addMeal, todayPoints, todayComplete, newBadges, dismissBadges } =
+    useProgram()
   const [mealOpen, setMealOpen] = useState(false)
+
+  // --- Gamificação: celebrações ---
+  const [celebrateStage, setCelebrateStage] = useState<Stage | null>(null)
+  const [confettiRun, setConfettiRun] = useState(false)
+  const [dailyToast, setDailyToast] = useState(false)
+  const prevStage = useRef(program.stage)
+  const prevComplete = useRef(todayComplete)
+
+  // Evolução de estágio → celebração com confete
+  useEffect(() => {
+    if (STAGE_ORDER.indexOf(program.stage) > STAGE_ORDER.indexOf(prevStage.current)) {
+      setCelebrateStage(program.stage)
+    }
+    prevStage.current = program.stage
+  }, [program.stage])
+
+  // Dia completo (todos os hábitos) → confete + faixa
+  useEffect(() => {
+    if (todayComplete && !prevComplete.current) {
+      setConfettiRun(true)
+      setDailyToast(true)
+      const t1 = setTimeout(() => setConfettiRun(false), 2400)
+      const t2 = setTimeout(() => setDailyToast(false), 3400)
+      prevComplete.current = todayComplete
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+    prevComplete.current = todayComplete
+  }, [todayComplete])
 
   const quote = useMemo(
     () => MOTIVATIONAL_QUOTES[program.day % MOTIVATIONAL_QUOTES.length],
     [program.day],
   )
   const stageInfo = stageProgress(program.points)
+  const doneCount = HABITS.filter((h) => program.todayCheckins[h.key]).length
 
   return (
     <div className="pt-20 pb-32 px-container-padding animate-fade-in">
@@ -29,11 +76,19 @@ export function Dashboard() {
         subtitle={undefined}
         left={
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center border-2 border-primary-container">
-              <Icon name="person" fill className="text-secondary text-[22px]" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 bg-surface-container-highest rounded-full p-0.5 border border-surface">
-              <Icon name={program.stage === 'borboleta' ? 'flutter_dash' : program.stage === 'casulo' ? 'egg' : 'pest_control'} fill className="text-[12px] text-primary" />
+            {profile?.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover border-2 border-primary-container"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center border-2 border-primary-container">
+                <Icon name="person" fill className="text-secondary text-[22px]" />
+              </div>
+            )}
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-surface-container-lowest rounded-full border border-surface flex items-center justify-center overflow-hidden">
+              <Metamorphosis stage={program.stage} size={16} />
             </div>
           </div>
         }
@@ -81,7 +136,7 @@ export function Dashboard() {
           <span>{stageInfo.next === 'borboleta' ? 'Borboleta' : 'Casulo'}</span>
         </div>
         <div className="flex items-center gap-4 mt-4 pt-4 border-t border-outline-variant/60">
-          <Stat icon="bolt" label="Pontos" value={program.points} />
+          <Stat icon="bolt" label="Pontos" value={<AnimatedNumber value={program.points} />} />
           <Stat icon="local_fire_department" label="Sequência" value={`${program.streak}d`} />
           <Stat icon="restaurant_menu" label="Refeições" value={program.meals.length} />
         </div>
@@ -90,50 +145,29 @@ export function Dashboard() {
       {/* Check-in Diário */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-headline-md text-headline-md text-on-surface">Check-in Diário</h3>
-          <span className="font-label-md text-label-md text-primary">+{todayPoints} pts hoje</span>
+          <div>
+            <h3 className="font-headline-md text-headline-md text-on-surface">Check-in Diário</h3>
+            <span className="font-label-md text-label-md text-primary">
+              +<AnimatedNumber value={todayPoints} /> pts hoje
+            </span>
+          </div>
+          <DailyRing done={doneCount} total={HABITS.length} />
         </div>
-        <div className="flex flex-col gap-3">
-          {HABITS.map((h) => {
-            const active = program.todayCheckins[h.key] === true
-            return (
-              <button
-                key={h.key}
-                onClick={() => toggleHabit(h.key)}
-                className={clsx(
-                  'group flex items-center justify-between p-4 rounded-xl border transition-all active:scale-[0.98]',
-                  active
-                    ? 'bg-primary border-primary text-on-primary'
-                    : 'bg-surface-container-lowest border-outline-variant hover:border-primary-container',
-                )}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={clsx(
-                      'w-12 h-12 rounded-full flex items-center justify-center transition-colors',
-                      active ? 'bg-on-primary text-primary' : 'bg-secondary-fixed/50 text-secondary',
-                    )}
-                  >
-                    <Icon name={h.icon} fill className="text-[24px]" />
-                  </div>
-                  <div className="text-left">
-                    <span className={clsx('font-label-md text-label-md block', active ? 'text-on-primary' : 'text-on-surface')}>
-                      {h.label}
-                    </span>
-                    <span className={clsx('font-body-sm text-body-sm', active ? 'text-on-primary/80' : 'text-on-surface-variant')}>
-                      {h.hint}
-                    </span>
-                  </div>
-                </div>
-                <Icon
-                  name="check_circle"
-                  fill={active}
-                  className={clsx('text-[24px]', active ? 'text-on-primary' : 'text-outline-variant')}
-                />
-              </button>
-            )
-          })}
-        </div>
+        <motion.div
+          className="flex flex-col gap-3"
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+        >
+          {HABITS.map((h) => (
+            <HabitCheck
+              key={h.key}
+              habit={h}
+              active={program.todayCheckins[h.key] === true}
+              onToggle={() => toggleHabit(h.key)}
+            />
+          ))}
+        </motion.div>
       </section>
 
       {/* Upload de refeição */}
@@ -169,11 +203,19 @@ export function Dashboard() {
       )}
 
       <MealCapture open={mealOpen} onClose={() => setMealOpen(false)} onSave={addMeal} />
+
+      {/* Gamificação: celebrações */}
+      <Confetti run={confettiRun} />
+      <DailyCompleteToast show={dailyToast} />
+      {newBadges.length > 0 && <BadgeToast badges={newBadges} onDone={dismissBadges} />}
+      {celebrateStage && (
+        <StageCelebration stage={celebrateStage} onClose={() => setCelebrateStage(null)} />
+      )}
     </div>
   )
 }
 
-function Stat({ icon, label, value }: { icon: string; label: string; value: string | number }) {
+function Stat({ icon, label, value }: { icon: string; label: string; value: ReactNode }) {
   return (
     <div className="flex items-center gap-2">
       <Icon name={icon} fill className="text-primary text-[20px]" />

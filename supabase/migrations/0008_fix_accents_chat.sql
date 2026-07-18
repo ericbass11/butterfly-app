@@ -1,0 +1,72 @@
+-- ============================================================================
+-- App Butterfly — Migration 0008
+-- Corrige a ACENTUAÇÃO das respostas da base de conhecimento do Chat de IA
+-- (o seed original foi gravado sem acentos). Idempotente (pode rodar de novo).
+-- Rode no SQL Editor DEPOIS da 0007.
+-- ============================================================================
+
+update public.knowledge_entries as k
+set answer = v.answer, tip = v.tip
+from (values
+  ('kb-pao',
+   E'Na Fase 1 do método, o foco é reduzir a inflamação. Evite pães de trigo tradicionais. As melhores opções são: pão 100% de farinha de amêndoas; pão de fermentação natural (sourdough) autêntico, caso não tenha sensibilidade severa; e tapioca fina como alternativa rápida.',
+   E'Leia sempre o rótulo. Fuja de ingredientes com nomes complexos e açúcares escondidos (maltodextrina, xarope de milho).'),
+  ('kb-ovo',
+   E'Sim! Ovos são bem-vindos no protocolo. São ricos em proteína e saciam por mais tempo. Prepare mexidos, cozidos ou como omelete com folhas verdes e azeite de oliva.',
+   E'Prefira ovos caipiras e evite fritar em óleos refinados; use azeite ou óleo de coco.'),
+  ('kb-acucar',
+   E'Açúcar refinado está fora do protocolo — é um dos principais gatilhos inflamatórios. Para adoçar, use pequenas quantidades de frutas vermelhas ou, se necessário, adoçantes naturais aprovados no seu plano.',
+   E'Vontade de doce costuma ser sinal de sede ou cansaço. Beba água e observe antes de ceder.'),
+  ('kb-alcool',
+   E'Durante os 45 dias, recomendamos suspender o álcool. Ele sobrecarrega o fígado e atrapalha a desinflamação e o sono, dois pilares da sua metamorfose.',
+   E'Em eventos sociais, água com gás e rodela de limão é uma ótima substituição.'),
+  ('kb-tempero',
+   E'Temperos naturais são liberados e incentivados: alho, cebola, cúrcuma, gengibre, ervas frescas e azeite. Evite temperos prontos industrializados, que costumam ter glutamato e açúcar.',
+   E'Cúrcuma com pimenta-do-reino é uma dupla anti-inflamatória poderosa.'),
+  ('kb-agua',
+   E'A meta é cerca de 2L por dia (35ml por kg de peso). A hidratação é essencial para eliminar toxinas e reduzir a retenção. Registre no seu Check-in Diário!',
+   E'Comece o dia com um copo de água morna com limão para ativar o metabolismo.'),
+  ('kb-fruta',
+   E'Priorize frutas de baixo índice glicêmico: frutas vermelhas, abacate e coco. Frutas muito doces devem ser consumidas com moderação na Fase 1.',
+   E'Combine a fruta com uma gordura boa (castanhas) para suavizar o pico de glicose.'),
+  ('kb-cafe',
+   E'Café puro e sem açúcar é permitido com moderação (até 2 xícaras por dia). Evite adoçar e não exagere para não atrapalhar o sono.',
+   E'Se sentir ansiedade ou insônia, troque por chá verde ou chá de ervas à tarde.'),
+  ('kb-leite',
+   E'Laticínios podem ser inflamatórios para muitas pessoas. Na Fase 1, prefira versões sem lactose ou alternativas vegetais. Iogurte natural integral pode entrar com moderação se você tolera bem.',
+   E'Observe seu corpo: inchaço ou gases após laticínios são sinais para reduzir.'),
+  ('kb-arroz',
+   E'Carboidratos como arroz branco e batata devem ser reduzidos na Fase 1. Prefira versões integrais em pequenas porções, ou troque por couve-flor e legumes.',
+   E'A batata-doce é uma boa fonte de energia em dias de treino, em porções moderadas.'),
+  ('kb-exercicio',
+   E'Movimento é parte do protocolo. Comece com 30 minutos de caminhada por dia e evolua no seu ritmo. O importante é a constância, não a intensidade.',
+   E'Registre a atividade no Check-in Diário para acumular pontos e evoluir seu avatar.'),
+  ('kb-fase',
+   E'O protocolo tem 45 dias divididos em fases de adaptação, desinflamação e consolidação. Cada fase libera novos alimentos gradualmente. Siga o material do seu módulo para os detalhes.',
+   E'Não pule etapas: a progressão gradual é o que garante resultado sustentável.'),
+  ('kb-fome',
+   E'Fome constante costuma indicar refeições pobres em proteína e gordura boa. Reforce esses grupos e beba água. Fome emocional pede pausa e respiração, não comida.',
+   E'Antes de beliscar, respire fundo 3 vezes e beba um copo de água; espere 10 minutos.'),
+  ('kb-sono',
+   E'Dormir bem é tão importante quanto comer bem. A privação de sono aumenta a fome e a vontade de doces. Busque 7 a 8 horas e crie um ritual noturno.',
+   E'Desligue telas 1 hora antes de dormir e evite cafeína após as 16h.'),
+  ('kb-gluten',
+   E'Na Fase 1 evitamos glúten para reduzir a inflamação. Prefira farinhas de amêndoas, coco ou tapioca. A reintrodução pode ser avaliada nas fases seguintes.',
+   E'Muitos produtos sem glúten são ultraprocessados; prefira comida de verdade.'),
+  ('kb-suplemento',
+   E'Suplementos não substituem comida de verdade. Alguns podem ajudar (como ômega-3 e vitamina D), mas só devem ser usados com orientação do seu profissional parceiro.',
+   E'Nunca inicie suplementação por conta própria se você tem condições clínicas.'),
+  ('kb-emagrece',
+   E'O emagrecimento é consequência da desinflamação e dos novos hábitos, não do foco na balança. Meça-se por energia, sono, roupa e disposição, além do peso.',
+   E'Pese-se no máximo uma vez por semana, sempre no mesmo horário e condições.'),
+  ('kb-gestante',
+   E'Gestantes e lactantes precisam de acompanhamento profissional antes de iniciar qualquer restrição alimentar. A segurança vem sempre em primeiro lugar.',
+   E'Fale com seu médico parceiro para adaptar o protocolo com segurança.'),
+  ('kb-diabetes',
+   E'Pessoas com diabetes precisam de acompanhamento clínico para dietas restritivas, pois há risco de hipoglicemia. O protocolo restritivo só é liberado com aval do profissional parceiro.',
+   E'Monitore sua glicemia e nunca ajuste medicação por conta própria.'),
+  ('kb-recaida',
+   E'Um deslize não apaga o seu progresso. O que importa é a próxima escolha. Volte ao plano na refeição seguinte, sem culpa e sem compensar com restrição extrema.',
+   E'Escreva o gatilho que levou ao deslize; entender é o primeiro passo para prevenir.')
+) as v(slug, answer, tip)
+where k.slug = v.slug;

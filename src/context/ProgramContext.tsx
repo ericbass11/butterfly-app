@@ -11,6 +11,7 @@ import {
 import type { Anamnese, MealEntry, ProgramState, TriageResult } from '@/lib/types'
 import { createInitialProgram, refreshProgram, store } from '@/lib/store'
 import { DAILY_MAX_POINTS, HABITS, stageForPoints, todayKey } from '@/lib/gamification'
+import { evaluateBadges, isDayComplete } from '@/lib/badges'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import * as db from '@/lib/db'
 import { useAuth } from './AuthContext'
@@ -25,6 +26,9 @@ interface ProgramContextValue {
   completeOnboarding: (anamnese: Anamnese, triage: TriageResult) => Promise<void>
   todayPoints: number
   todayComplete: boolean
+  /** Conquistas recém-desbloqueadas (para celebrar) e como limpar. */
+  newBadges: string[]
+  dismissBadges: () => void
   reset: () => void
 }
 
@@ -36,6 +40,19 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
 
   const [program, setProgram] = useState<ProgramState>(() => createInitialProgram())
   const [onboarded, setOnboarded] = useState(false)
+  const [newBadges, setNewBadges] = useState<string[]>([])
+  const dismissBadges = useCallback(() => setNewBadges([]), [])
+
+  /** Desbloqueia conquistas satisfeitas por `next`. Quando celebrate=true,
+   *  expõe as novas para a UI comemorar. */
+  const applyBadges = useCallback((next: ProgramState, celebrate: boolean): ProgramState => {
+    const satisfied = evaluateBadges(next, isDayComplete(next.todayCheckins))
+    const have = new Set(next.badges ?? [])
+    const fresh = satisfied.filter((id) => !have.has(id))
+    if (fresh.length === 0) return next
+    if (celebrate) setNewBadges((prev) => [...prev, ...fresh])
+    return { ...next, badges: [...(next.badges ?? []), ...fresh] }
+  }, [])
   // Para QUAL usuária o estado atual foi carregado ('demo' no modo local).
   // Evita a corrida que reenviava o usuário à anamnese durante o carregamento.
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
@@ -55,7 +72,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
 
     if (!isSupabaseConfigured) {
       const existing = store.getProgram()
-      setProgram(existing ? refreshProgram(existing) : createInitialProgram())
+      setProgram(applyBadges(existing ? refreshProgram(existing) : createInitialProgram(), false))
       setOnboarded(store.isOnboarded())
       setLoadedFor('demo')
       return
@@ -71,17 +88,26 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Dica local: se já concluiu o onboarding antes, assume concluído de imediato
+    // (evita flash da anamnese em reload/nova aba enquanto o banco carrega).
+    const hint = store.getOnboardedHint(userId)
+    if (hint) setOnboarded(true)
+
     ;(async () => {
       try {
         const [loaded, ob] = await Promise.all([db.getProgram(userId), db.isOnboarded(userId)])
         if (!active) return
-        setProgram(loaded ? refreshProgram(loaded) : createInitialProgram())
-        setOnboarded(ob)
+        setProgram(applyBadges(loaded ? refreshProgram(loaded) : createInitialProgram(), false))
+        const finalOb = ob || hint
+        setOnboarded(finalOb)
+        if (finalOb) store.setOnboardedHint(userId, true)
         setLoadedFor(userId)
       } catch {
         if (active) {
+          // Erro de rede: NÃO manda para a anamnese — respeita a dica local.
           setProgram(createInitialProgram())
-          setLoadedFor(userId) // resolvido (mesmo com erro) para não travar a UI
+          setOnboarded(hint)
+          setLoadedFor(userId)
         }
       }
     })()
@@ -119,7 +145,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
         const points = Math.max(0, prev.points + delta)
         const today = todayKey()
         const streak = !was && prev.lastCheckinDate !== today ? prev.streak + 1 : prev.streak
-        const next: ProgramState = {
+        const base: ProgramState = {
           ...prev,
           todayCheckins,
           points,
@@ -127,11 +153,12 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
           streak,
           stage: stageForPoints(points, prev.day),
         }
+        const next = applyBadges(base, true)
         persist(next)
         return next
       })
     },
-    [persist],
+    [persist, applyBadges],
   )
 
   const addMeal = useCallback(
@@ -146,7 +173,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
         const alreadyFood = prev.todayCheckins.food === true
         const foodHabit = HABITS.find((h) => h.key === 'food')!
         const points = alreadyFood ? prev.points : prev.points + foodHabit.points
-        const next: ProgramState = {
+        const base: ProgramState = {
           ...prev,
           meals: [meal, ...prev.meals].slice(0, 60),
           todayCheckins: { ...prev.todayCheckins, food: true },
@@ -154,11 +181,12 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
           points,
           stage: stageForPoints(points, prev.day),
         }
+        const next = applyBadges(base, true)
         persist(next)
         return next
       })
     },
-    [persist, userId],
+    [persist, userId, applyBadges],
   )
 
   const completeOnboarding = useCallback(
@@ -167,6 +195,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       if (isSupabaseConfigured && userId) {
         await db.saveAnamnese(userId, anamnese, triage)
         await db.upsertProgram(userId, program.meals.length ? program : base, true)
+        store.setOnboardedHint(userId, true)
       } else {
         store.setAnamnese(anamnese)
         store.setOnboarded(true)
@@ -204,9 +233,11 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       completeOnboarding,
       todayPoints,
       todayComplete,
+      newBadges,
+      dismissBadges,
       reset,
     }),
-    [program, ready, onboarded, toggleHabit, addMeal, completeOnboarding, todayPoints, todayComplete, reset],
+    [program, ready, onboarded, toggleHabit, addMeal, completeOnboarding, todayPoints, todayComplete, newBadges, dismissBadges, reset],
   )
 
   return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>

@@ -1,10 +1,15 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import { clsx } from '@/lib/utils'
 import { Icon } from './Icon'
 
 type Variant = 'primary' | 'ghost' | 'tonal'
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps
+  extends Omit<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    'onAnimationStart' | 'onAnimationEnd' | 'onDrag' | 'onDragStart' | 'onDragEnd'
+  > {
   variant?: Variant
   icon?: string
   iconRight?: string
@@ -31,13 +36,15 @@ export function Button({
   ...rest
 }: ButtonProps) {
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
       className={clsx(base, variants[variant], fullWidth && 'w-full', className)}
       {...rest}
     >
       {icon && <Icon name={icon} className="text-[20px]" />}
       <span>{children}</span>
       {iconRight && <Icon name={iconRight} className="text-[20px]" />}
-    </button>
+    </motion.button>
   )
 }

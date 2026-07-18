@@ -44,6 +44,7 @@ export interface ProgramState {
   lastCheckinDate: string | null // yyyy-mm-dd
   meals: MealEntry[]
   streak: number
+  badges: string[] // ids de conquistas desbloqueadas
 }
 
 export interface MealEntry {

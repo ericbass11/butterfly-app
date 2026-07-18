@@ -12,6 +12,7 @@ import { Chat } from '@/screens/Chat'
 import { Profile } from '@/screens/Profile'
 import { PartnerDashboard } from '@/screens/PartnerDashboard'
 import { AdminDashboard } from '@/screens/AdminDashboard'
+import { AdminManage } from '@/screens/AdminManage'
 
 export default function App() {
   return (
@@ -61,6 +62,14 @@ export default function App() {
                 element={
                   <RequireRole role="admin">
                     <AdminDashboard />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="admin/gerenciar"
+                element={
+                  <RequireRole role="admin">
+                    <AdminManage />
                   </RequireRole>
                 }
               />

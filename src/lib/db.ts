@@ -447,3 +447,238 @@ export async function insertChatMessage(
     .insert({ user_id: userId, role: msg.role, content: msg.content, tip: msg.tip ?? null })
   if (error) throw error
 }
+
+// ============================================================================
+// ADMIN — CRUD de conteúdo e gestão (requer papel admin; protegido por RLS)
+// ============================================================================
+
+function slugify(text: string): string {
+  const base = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 40)
+  return `${base || 'item'}-${crypto.randomUUID().slice(0, 4)}`
+}
+
+// ---------- Módulos ----------
+export interface ModuleInput {
+  title: string
+  description: string
+  tag: string
+  cover: string
+  orderIndex?: number
+}
+
+export async function createModule(input: ModuleInput): Promise<void> {
+  const { error } = await client().from('modules').insert({
+    slug: slugify(input.title),
+    title: input.title,
+    description: input.description,
+    tag: input.tag,
+    cover_url: input.cover,
+    order_index: input.orderIndex ?? 99,
+  })
+  if (error) throw error
+}
+
+export async function updateModule(id: string, input: ModuleInput): Promise<void> {
+  const { error } = await client()
+    .from('modules')
+    .update({
+      title: input.title,
+      description: input.description,
+      tag: input.tag,
+      cover_url: input.cover,
+      ...(input.orderIndex !== undefined ? { order_index: input.orderIndex } : {}),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteModule(id: string): Promise<void> {
+  const { error } = await client().from('modules').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---------- Aulas ----------
+export interface LessonInput {
+  title: string
+  category: string
+  moduleSlug: string | null
+  description: string
+  duration: string
+  thumbnail: string
+  videoUrl: string
+  content: string
+  orderIndex?: number
+}
+
+export async function createLesson(input: LessonInput): Promise<void> {
+  const { error } = await client().from('lessons').insert({
+    slug: slugify(input.title),
+    module_slug: input.moduleSlug,
+    category: input.category,
+    title: input.title,
+    description: input.description,
+    duration: input.duration,
+    thumbnail_url: input.thumbnail,
+    video_url: input.videoUrl,
+    content: input.content,
+    order_index: input.orderIndex ?? 99,
+  })
+  if (error) throw error
+}
+
+export async function updateLesson(id: string, input: LessonInput): Promise<void> {
+  const { error } = await client()
+    .from('lessons')
+    .update({
+      module_slug: input.moduleSlug,
+      category: input.category,
+      title: input.title,
+      description: input.description,
+      duration: input.duration,
+      thumbnail_url: input.thumbnail,
+      video_url: input.videoUrl,
+      content: input.content,
+      ...(input.orderIndex !== undefined ? { order_index: input.orderIndex } : {}),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteLesson(id: string): Promise<void> {
+  const { error } = await client().from('lessons').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---------- E-books ----------
+export interface EbookInput {
+  title: string
+  description: string
+  format: string
+  fileUrl: string
+  orderIndex?: number
+}
+
+export async function createEbook(input: EbookInput): Promise<void> {
+  const { error } = await client().from('ebooks').insert({
+    slug: slugify(input.title),
+    title: input.title,
+    description: input.description,
+    format: input.format || 'PDF',
+    file_url: input.fileUrl,
+    order_index: input.orderIndex ?? 99,
+  })
+  if (error) throw error
+}
+
+export async function updateEbook(id: string, input: EbookInput): Promise<void> {
+  const { error } = await client()
+    .from('ebooks')
+    .update({
+      title: input.title,
+      description: input.description,
+      format: input.format || 'PDF',
+      file_url: input.fileUrl,
+      ...(input.orderIndex !== undefined ? { order_index: input.orderIndex } : {}),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteEbook(id: string): Promise<void> {
+  const { error } = await client().from('ebooks').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---------- Base de conhecimento (admin, com id) ----------
+export interface KnowledgeRow {
+  id: string
+  category: string
+  keywords: string[]
+  answer: string
+  tip: string
+}
+export interface KnowledgeInput {
+  category: string
+  keywords: string[]
+  answer: string
+  tip: string
+}
+
+export async function listKnowledgeAll(): Promise<KnowledgeRow[]> {
+  const { data, error } = await client()
+    .from('knowledge_entries')
+    .select('id, category, keywords, answer, tip')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((k) => ({
+    id: k.id,
+    category: k.category ?? '',
+    keywords: (k.keywords ?? []) as string[],
+    answer: k.answer ?? '',
+    tip: k.tip ?? '',
+  }))
+}
+
+export async function createKnowledge(input: KnowledgeInput): Promise<void> {
+  const { error } = await client().from('knowledge_entries').insert({
+    slug: slugify(input.keywords[0] ?? input.answer.slice(0, 20)),
+    category: input.category,
+    keywords: input.keywords,
+    answer: input.answer,
+    tip: input.tip || null,
+  })
+  if (error) throw error
+}
+
+export async function updateKnowledge(id: string, input: KnowledgeInput): Promise<void> {
+  const { error } = await client()
+    .from('knowledge_entries')
+    .update({
+      category: input.category,
+      keywords: input.keywords,
+      answer: input.answer,
+      tip: input.tip || null,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteKnowledge(id: string): Promise<void> {
+  const { error } = await client().from('knowledge_entries').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---------- Usuárias (gestão de papel) ----------
+export interface ManagedUser {
+  id: string
+  name: string
+  email: string
+  role: Role
+  createdAt: string
+}
+
+export async function listAllProfiles(): Promise<ManagedUser[]> {
+  const { data, error } = await client()
+    .from('profiles')
+    .select('id, name, email, role, created_at')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    name: p.name ?? '',
+    email: p.email ?? '',
+    role: (p.role ?? 'patient') as Role,
+    createdAt: p.created_at,
+  }))
+}
+
+export async function updateUserRole(userId: string, role: Role): Promise<void> {
+  const { error } = await client().from('profiles').update({ role }).eq('id', userId)
+  if (error) throw error
+}

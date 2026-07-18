@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { isSupabaseConfigured } from '@/lib/supabase'
@@ -68,13 +69,14 @@ export function AdminDashboard() {
         )}
       </div>
 
-      {/* Gestão rápida */}
-      <h3 className="font-headline-md text-[20px] text-on-surface mb-3">Gestão</h3>
+      {/* Gestão de conteúdo (CRUD conectado ao banco) */}
+      <h3 className="font-headline-md text-[20px] text-on-surface mb-3">Gestão de conteúdo</h3>
       <div className="surface-card divide-y divide-outline-variant/60">
-        <ManageRow icon="person_add" label="Convidar usuárias" desc="Gerar link exclusivo de acesso" />
-        <ManageRow icon="handshake" label="Parceiros de saúde" desc="Gerenciar médicos e terapeutas" />
-        <ManageRow icon="verified_user" label="Liberações pendentes" desc="Aprovar acessos ao protocolo" />
-        <ManageRow icon="smart_toy" label="Base de conhecimento IA" desc="Editar respostas do método" />
+        <ManageRow to="/app/admin/gerenciar?tab=lessons" icon="play_circle" label="Aulas" desc="Criar e editar aulas e vídeos" />
+        <ManageRow to="/app/admin/gerenciar?tab=ebooks" icon="menu_book" label="E-books" desc="Materiais para download" />
+        <ManageRow to="/app/admin/gerenciar?tab=knowledge" icon="smart_toy" label="Base de conhecimento IA" desc="Respostas do método usadas no Chat" />
+        <ManageRow to="/app/admin/gerenciar?tab=modules" icon="hub" label="Módulos" desc="Trilhas de aprendizado" />
+        <ManageRow to="/app/admin/gerenciar?tab=users" icon="group" label="Usuárias e papéis" desc="Gerenciar acessos (RBAC)" />
       </div>
     </div>
   )
@@ -97,9 +99,9 @@ function StageBar({ label, icon, count, total }: { label: string; icon: string; 
   )
 }
 
-function ManageRow({ icon, label, desc }: { icon: string; label: string; desc: string }) {
+function ManageRow({ to, icon, label, desc }: { to: string; icon: string; label: string; desc: string }) {
   return (
-    <button className="w-full flex items-center justify-between px-4 py-4 hover:bg-surface-container-low transition-colors text-left">
+    <Link to={to} className="w-full flex items-center justify-between px-4 py-4 hover:bg-surface-container-low transition-colors text-left">
       <span className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-secondary-fixed/50 flex items-center justify-center">
           <Icon name={icon} className="text-secondary text-[20px]" />
@@ -110,6 +112,6 @@ function ManageRow({ icon, label, desc }: { icon: string; label: string; desc: s
         </span>
       </span>
       <Icon name="chevron_right" className="text-on-surface-variant" />
-    </button>
+    </Link>
   )
 }

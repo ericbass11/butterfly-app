@@ -2,14 +2,7 @@ import { motion } from 'framer-motion'
 import type { Stage } from '@/lib/types'
 import { stageMeta } from '@/lib/gamification'
 import { clsx } from '@/lib/utils'
-import { Icon } from './Icon'
 import { Metamorphosis } from './Metamorphosis'
-
-const stageIcon: Record<Stage, string> = {
-  larva: 'pest_control',
-  casulo: 'egg',
-  borboleta: 'flutter_dash',
-}
 
 const sizes = {
   sm: { box: 'w-12 h-12', svg: 34 },
@@ -55,8 +48,10 @@ export function ButterflyAvatar({ stage, size = 'md', className }: Props) {
 export function StageBadge({ stage }: { stage: Stage }) {
   const meta = stageMeta(stage)
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary-fixed/60 px-3 py-1 font-label-md text-label-md text-on-secondary-fixed-variant">
-      <Icon name={stageIcon[stage]} fill className="text-[16px]" />
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary-fixed/60 pl-1.5 pr-3 py-1 font-label-md text-label-md text-on-secondary-fixed-variant">
+      <span className="w-6 h-6 rounded-full bg-surface-container-lowest flex items-center justify-center overflow-hidden">
+        <Metamorphosis stage={stage} size={20} />
+      </span>
       Estágio: {meta.label}
     </span>
   )

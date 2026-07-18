@@ -6,6 +6,7 @@ import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
 import { ProgressBar } from '@/components/ProgressBar'
 import { StageBadge } from '@/components/ButterflyAvatar'
+import { Metamorphosis } from '@/components/Metamorphosis'
 import { MealCapture } from '@/components/MealCapture'
 import {
   AnimatedNumber,
@@ -86,8 +87,8 @@ export function Dashboard() {
                 <Icon name="person" fill className="text-secondary text-[22px]" />
               </div>
             )}
-            <div className="absolute -bottom-1 -right-1 bg-surface-container-highest rounded-full p-0.5 border border-surface">
-              <Icon name={program.stage === 'borboleta' ? 'flutter_dash' : program.stage === 'casulo' ? 'egg' : 'pest_control'} fill className="text-[12px] text-primary" />
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-surface-container-lowest rounded-full border border-surface flex items-center justify-center overflow-hidden">
+              <Metamorphosis stage={program.stage} size={16} />
             </div>
           </div>
         }

@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon'
 import { Button } from '@/components/Button'
 import { UserAvatar } from '@/components/UserAvatar'
 import { EditProfile } from '@/components/EditProfile'
+import { Metamorphosis } from '@/components/Metamorphosis'
 import { motion } from 'framer-motion'
 import { PROGRAM_LENGTH, STAGES, stageMeta } from '@/lib/gamification'
 import { BADGES } from '@/lib/badges'
@@ -56,8 +57,11 @@ export function Profile() {
         </button>
         <h2 className="font-headline-lg text-[26px] font-bold text-on-surface">{profile?.name}</h2>
         <p className="font-body-md text-body-md text-on-surface-variant">{profile?.email}</p>
-        <span className="inline-flex items-center gap-1.5 mt-3 rounded-full bg-secondary-fixed/60 px-3 py-1 font-label-md text-label-md text-on-secondary-fixed-variant">
-          <Icon name={meta.icon} fill className="text-[16px]" /> {meta.label} · {roleLabel(profile?.role)}
+        <span className="inline-flex items-center gap-1.5 mt-3 rounded-full bg-secondary-fixed/60 pl-1.5 pr-3 py-1 font-label-md text-label-md text-on-secondary-fixed-variant">
+          <span className="w-6 h-6 rounded-full bg-surface-container-lowest flex items-center justify-center overflow-hidden">
+            <Metamorphosis stage={program.stage} size={20} />
+          </span>
+          {meta.label} · {roleLabel(profile?.role)}
         </span>
         <p className="font-body-sm text-body-sm text-on-surface-variant mt-3 max-w-xs italic">{meta.blurb}</p>
         <Button variant="ghost" icon="edit" onClick={() => setEditOpen(true)} className="mt-4 !min-h-[40px] !px-5">
@@ -133,13 +137,13 @@ export function Profile() {
                 <div className="flex flex-col items-center">
                   <div
                     className={clsx(
-                      'w-11 h-11 rounded-full flex items-center justify-center border-2 transition-colors',
-                      reached
-                        ? 'bg-primary-container border-primary-container text-on-primary'
-                        : 'bg-surface-container border-outline-variant text-outline',
+                      'w-11 h-11 rounded-full flex items-center justify-center border-2 overflow-hidden bg-surface-container-lowest transition-colors',
+                      reached ? 'border-primary-container' : 'border-outline-variant',
                     )}
                   >
-                    <Icon name={s.icon} fill={reached} className="text-[22px]" />
+                    <div className={clsx('transition-all', !reached && 'grayscale opacity-40')}>
+                      <Metamorphosis stage={s.key} size={30} />
+                    </div>
                   </div>
                   {i < STAGES.length - 1 && (
                     <div className={clsx('w-0.5 flex-1 my-1', reached ? 'bg-primary-container' : 'bg-outline-variant')} />

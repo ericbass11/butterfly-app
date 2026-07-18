@@ -1,19 +1,13 @@
 import { motion } from 'framer-motion'
 import type { Stage } from '@/lib/types'
 import { ButterflyAvatar } from './ButterflyAvatar'
-import { Icon } from './Icon'
+import { Metamorphosis } from './Metamorphosis'
 import { clsx } from '@/lib/utils'
 
-const stageIcon: Record<Stage, string> = {
-  larva: 'pest_control',
-  casulo: 'egg',
-  borboleta: 'flutter_dash',
-}
-
-const boxes: Record<'sm' | 'md' | 'lg', { box: string; badge: string; badgeIcon: string }> = {
-  sm: { box: 'w-12 h-12', badge: 'w-5 h-5', badgeIcon: 'text-[12px]' },
-  md: { box: 'w-24 h-24', badge: 'w-7 h-7', badgeIcon: 'text-[16px]' },
-  lg: { box: 'w-40 h-40', badge: 'w-11 h-11', badgeIcon: 'text-[24px]' },
+const boxes: Record<'sm' | 'md' | 'lg', { box: string; badge: string; badgeSvg: number }> = {
+  sm: { box: 'w-12 h-12', badge: 'w-5 h-5', badgeSvg: 16 },
+  md: { box: 'w-24 h-24', badge: 'w-7 h-7', badgeSvg: 22 },
+  lg: { box: 'w-40 h-40', badge: 'w-11 h-11', badgeSvg: 34 },
 }
 
 interface Props {
@@ -26,7 +20,8 @@ interface Props {
 
 /**
  * Avatar da usuária: mostra a FOTO de perfil quando existe; caso contrário,
- * a ilustração animada da metamorfose. Um selo do estágio aparece no canto.
+ * a ilustração animada da metamorfose. Um selo do estágio (larva/casulo/
+ * borboleta) aparece no canto.
  */
 export function UserAvatar({ stage, photoUrl, size = 'md', showStage = true, className }: Props) {
   const s = boxes[size]
@@ -46,13 +41,11 @@ export function UserAvatar({ stage, photoUrl, size = 'md', showStage = true, cla
       {showStage && (
         <div
           className={clsx(
-            'absolute -bottom-0.5 -right-0.5 rounded-full bg-surface flex items-center justify-center border border-surface shadow-sm',
+            'absolute -bottom-0.5 -right-0.5 rounded-full bg-surface-container-lowest flex items-center justify-center border-2 border-surface shadow-sm overflow-hidden',
             s.badge,
           )}
         >
-          <span className={clsx('w-full h-full rounded-full bg-primary-container flex items-center justify-center')}>
-            <Icon name={stageIcon[stage]} fill className={clsx('text-on-primary', s.badgeIcon)} />
-          </span>
+          <Metamorphosis stage={stage} size={s.badgeSvg} />
         </div>
       )}
     </div>

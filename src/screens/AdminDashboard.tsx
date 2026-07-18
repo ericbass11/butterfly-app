@@ -1,16 +1,37 @@
+import { useEffect, useState } from 'react'
 import { TopBar } from '@/components/TopBar'
 import { Icon } from '@/components/Icon'
-import { ADMIN_KPIS, PATIENTS } from '@/data/roster'
-import { clsx } from '@/lib/utils'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { getAdminStats, type AdminStats } from '@/lib/db'
+import { demoAdminStats } from '@/data/roster'
+import { pct } from '@/lib/utils'
 
 /** Painel Administrativo (RF01, Persona 3 — Administradoras). */
 export function AdminDashboard() {
-  const stageCounts = {
-    larva: PATIENTS.filter((p) => p.stage === 'larva').length,
-    casulo: PATIENTS.filter((p) => p.stage === 'casulo').length,
-    borboleta: PATIENTS.filter((p) => p.stage === 'borboleta').length,
-  }
-  const total = PATIENTS.length
+  const [stats, setStats] = useState<AdminStats | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (!isSupabaseConfigured) {
+      setStats(demoAdminStats())
+      return
+    }
+    getAdminStats()
+      .then((s) => active && setStats(s))
+      .catch(() => active && setStats({ totalPatients: 0, activeToday: 0, completionRate: 0, stageCounts: { larva: 0, casulo: 0, borboleta: 0 } }))
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const total = stats?.totalPatients ?? 0
+
+  const kpis = [
+    { icon: 'group', label: 'Usuárias ativas', value: stats ? String(stats.totalPatients) : '—' },
+    { icon: 'trending_up', label: 'Engajamento hoje', value: stats ? pct(stats.activeToday) : '—' },
+    { icon: 'emoji_events', label: 'Taxa de conclusão', value: stats ? pct(stats.completionRate) : '—' },
+    { icon: 'smart_toy', label: 'Suporte via IA', value: 'Ativo' },
+  ]
 
   return (
     <div className="pt-20 pb-32 px-container-padding animate-fade-in">
@@ -18,13 +39,10 @@ export function AdminDashboard() {
 
       {/* KPIs (Métricas de Sucesso do MVP) */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        {ADMIN_KPIS.map((k) => (
+        {kpis.map((k) => (
           <div key={k.label} className="surface-card p-4">
             <div className="flex items-center justify-between mb-2">
               <Icon name={k.icon} fill className="text-primary text-[24px]" />
-              <span className="font-label-md text-[11px] text-primary bg-primary-container/20 rounded-full px-2 py-0.5">
-                {k.trend}
-              </span>
             </div>
             <div className="font-headline-md text-[26px] font-bold text-on-surface">{k.value}</div>
             <div className="font-body-sm text-[12px] text-on-surface-variant leading-tight">{k.label}</div>
@@ -35,11 +53,19 @@ export function AdminDashboard() {
       {/* Distribuição por estágio */}
       <div className="surface-card p-5 mb-6">
         <h3 className="font-headline-md text-[20px] text-on-surface mb-4">Distribuição por estágio</h3>
-        <div className="flex flex-col gap-4">
-          <StageBar label="Larva" icon="pest_control" count={stageCounts.larva} total={total} />
-          <StageBar label="Casulo" icon="egg" count={stageCounts.casulo} total={total} />
-          <StageBar label="Borboleta" icon="flutter_dash" count={stageCounts.borboleta} total={total} />
-        </div>
+        {!stats && <p className="font-body-sm text-body-sm text-on-surface-variant">Carregando…</p>}
+        {stats && total === 0 && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            Ainda não há pacientes cadastradas para exibir a distribuição.
+          </p>
+        )}
+        {stats && total > 0 && (
+          <div className="flex flex-col gap-4">
+            <StageBar label="Larva" icon="pest_control" count={stats.stageCounts.larva} total={total} />
+            <StageBar label="Casulo" icon="egg" count={stats.stageCounts.casulo} total={total} />
+            <StageBar label="Borboleta" icon="flutter_dash" count={stats.stageCounts.borboleta} total={total} />
+          </div>
+        )}
       </div>
 
       {/* Gestão rápida */}
@@ -47,7 +73,7 @@ export function AdminDashboard() {
       <div className="surface-card divide-y divide-outline-variant/60">
         <ManageRow icon="person_add" label="Convidar usuárias" desc="Gerar link exclusivo de acesso" />
         <ManageRow icon="handshake" label="Parceiros de saúde" desc="Gerenciar médicos e terapeutas" />
-        <ManageRow icon="verified_user" label="Liberações pendentes" desc="Aprovar acessos ao protocolo" badge="1" />
+        <ManageRow icon="verified_user" label="Liberações pendentes" desc="Aprovar acessos ao protocolo" />
         <ManageRow icon="smart_toy" label="Base de conhecimento IA" desc="Editar respostas do método" />
       </div>
     </div>
@@ -65,13 +91,13 @@ function StageBar({ label, icon, count, total }: { label: string; icon: string; 
         <span className="font-body-sm text-body-sm text-on-surface-variant">{count} usuárias</span>
       </div>
       <div className="h-2 w-full bg-tertiary-fixed rounded-full overflow-hidden">
-        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.round(ratio * 100)}%` }} />
+        <div className="h-full bg-primary rounded-full transition-all" style={{ width: pct(ratio) }} />
       </div>
     </div>
   )
 }
 
-function ManageRow({ icon, label, desc, badge }: { icon: string; label: string; desc: string; badge?: string }) {
+function ManageRow({ icon, label, desc }: { icon: string; label: string; desc: string }) {
   return (
     <button className="w-full flex items-center justify-between px-4 py-4 hover:bg-surface-container-low transition-colors text-left">
       <span className="flex items-center gap-3">
@@ -83,14 +109,7 @@ function ManageRow({ icon, label, desc, badge }: { icon: string; label: string; 
           <span className="font-body-sm text-body-sm text-on-surface-variant">{desc}</span>
         </span>
       </span>
-      <span className="flex items-center gap-2">
-        {badge && (
-          <span className={clsx('w-6 h-6 rounded-full bg-error text-on-error flex items-center justify-center text-[12px] font-label-md')}>
-            {badge}
-          </span>
-        )}
-        <Icon name="chevron_right" className="text-on-surface-variant" />
-      </span>
+      <Icon name="chevron_right" className="text-on-surface-variant" />
     </button>
   )
 }

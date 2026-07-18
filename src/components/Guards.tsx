@@ -1,14 +1,24 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { store } from '@/lib/store'
+import { useProgram } from '@/context/ProgramContext'
 import type { Role } from '@/lib/types'
+
+function Splash() {
+  return (
+    <div className="min-h-dvh flex items-center justify-center bg-background">
+      <span className="material-symbols-outlined icon-fill text-primary text-[48px] animate-flutter">
+        flutter_dash
+      </span>
+    </div>
+  )
+}
 
 /** Exige autenticação (RF01). */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
   const location = useLocation()
-  if (loading) return null
+  if (loading) return <Splash />
   if (!isAuthenticated) return <Navigate to="/" replace state={{ from: location }} />
   return <>{children}</>
 }
@@ -17,8 +27,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
  *  Profissionais e administradores não passam pela anamnese de paciente. */
 export function RequireOnboarded({ children }: { children: ReactNode }) {
   const { profile } = useAuth()
+  const { ready, onboarded } = useProgram()
   if (profile && profile.role !== 'patient') return <>{children}</>
-  if (!store.isOnboarded()) return <Navigate to="/onboarding" replace />
+  if (!ready) return <Splash />
+  if (!onboarded) return <Navigate to="/onboarding" replace />
   return <>{children}</>
 }
 

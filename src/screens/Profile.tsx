@@ -15,8 +15,8 @@ export function Profile() {
   const navigate = useNavigate()
   const meta = stageMeta(program.stage)
 
-  function handleSignOut() {
-    signOut()
+  async function handleSignOut() {
+    await signOut()
     navigate('/', { replace: true })
   }
 

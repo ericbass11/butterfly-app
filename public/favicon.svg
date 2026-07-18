@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2eb67d"/>
+      <stop offset="1" stop-color="#006c46"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Borboleta estilizada -->
+  <g fill="#ffffff">
+    <path d="M256 168c-18-44-58-72-104-72-40 0-64 26-64 62 0 52 60 92 168 118-70-70-92-118-92-150 0-16 10-26 26-26 28 0 52 26 70 68z"/>
+    <path d="M256 168c18-44 58-72 104-72 40 0 64 26 64 62 0 52-60 92-168 118 70-70 92-118 92-150 0-16-10-26-26-26-28 0-52 26-70 68z"/>
+    <path d="M256 200c-16 40-40 108-40 150 0 24 16 42 40 42s40-18 40-42c0-42-24-110-40-150z" opacity="0.95"/>
+    <circle cx="256" cy="150" r="14"/>
+  </g>
+</svg>

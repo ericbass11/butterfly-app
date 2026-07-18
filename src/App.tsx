@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProgramProvider } from '@/context/ProgramContext'
 import { AppLayout } from '@/components/AppLayout'
+import { ScrollToTop } from '@/components/ScrollToTop'
 import { RequireAuth, RequireOnboarded, RequireRole } from '@/components/Guards'
 import { Login } from '@/screens/Login'
 import { Onboarding } from '@/screens/Onboarding'
@@ -17,6 +18,7 @@ export default function App() {
     <AuthProvider>
       <ProgramProvider>
         <HashRouter>
+          <ScrollToTop />
           <Routes>
             {/* Público */}
             <Route path="/" element={<Login />} />

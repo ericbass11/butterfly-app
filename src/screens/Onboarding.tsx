@@ -5,8 +5,8 @@ import { Icon } from '@/components/Icon'
 import { clsx } from '@/lib/utils'
 import { emptyAnamnese, GOALS, triage } from '@/lib/anamnese'
 import type { Anamnese, TriageResult } from '@/lib/types'
-import { store, createInitialProgram } from '@/lib/store'
 import { triggerAutomation } from '@/lib/supabase'
+import { useProgram } from '@/context/ProgramContext'
 import { RiskBlocked } from './RiskBlocked'
 
 type Step = 'welcome' | 'form' | 'result'
@@ -19,9 +19,11 @@ const highlights = [
 
 export function Onboarding() {
   const navigate = useNavigate()
+  const { completeOnboarding } = useProgram()
   const [step, setStep] = useState<Step>('welcome')
   const [form, setForm] = useState<Anamnese>(emptyAnamnese)
   const [result, setResult] = useState<TriageResult | null>(null)
+  const [saving, setSaving] = useState(false)
 
   function update<K extends keyof Anamnese>(key: K, value: Anamnese[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -31,20 +33,25 @@ export function Onboarding() {
     e.preventDefault()
     const r = triage(form)
     setResult(r)
-    store.setAnamnese(form)
     void triggerAutomation('anamnese_submitted', { goal: form.goal, risk: r.level })
     setStep('result')
   }
 
-  function enterProgram() {
-    store.setOnboarded(true)
-    if (!store.getProgram()) store.setProgram(createInitialProgram())
-    void triggerAutomation('protocol_unlocked', {})
-    navigate('/app', { replace: true })
+  /** Persiste anamnese + marca onboarding concluído, depois navega. */
+  async function enterProgram(target = '/app') {
+    if (!result || saving) return
+    setSaving(true)
+    try {
+      await completeOnboarding(form, result)
+      void triggerAutomation('protocol_unlocked', { risk: result.level })
+      navigate(target, { replace: true })
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (step === 'result' && result?.level === 'blocked') {
-    return <RiskBlocked reasons={result.reasons} />
+    return <RiskBlocked reasons={result.reasons} onEnter={enterProgram} saving={saving} />
   }
 
   return (
@@ -66,7 +73,7 @@ export function Onboarding() {
       )}
 
       {step === 'result' && result && result.level !== 'blocked' && (
-        <ResultStep result={result} onContinue={enterProgram} />
+        <ResultStep result={result} onContinue={() => enterProgram()} saving={saving} />
       )}
     </div>
   )
@@ -223,7 +230,15 @@ function AnamneseForm({ form, update, onSubmit }: FormProps) {
   )
 }
 
-function ResultStep({ result, onContinue }: { result: TriageResult; onContinue: () => void }) {
+function ResultStep({
+  result,
+  onContinue,
+  saving,
+}: {
+  result: TriageResult
+  onContinue: () => void
+  saving: boolean
+}) {
   const attention = result.level === 'attention'
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center animate-pop py-8">
@@ -261,8 +276,8 @@ function ResultStep({ result, onContinue }: { result: TriageResult; onContinue: 
         </div>
       )}
 
-      <Button fullWidth iconRight="arrow_forward" onClick={onContinue}>
-        Ir para o Dashboard
+      <Button fullWidth iconRight="arrow_forward" onClick={onContinue} disabled={saving}>
+        {saving ? 'Preparando…' : 'Ir para o Dashboard'}
       </Button>
     </div>
   )

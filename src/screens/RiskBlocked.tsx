@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { triggerAutomation } from '@/lib/supabase'
@@ -6,16 +5,21 @@ import { triggerAutomation } from '@/lib/supabase'
 /**
  * Caminho B do User Flow (RF02): risco detectado.
  * Tela bloqueada informando a necessidade de vínculo com o Médico Parceiro
- * antes de liberar o protocolo restritivo.
+ * antes de liberar o protocolo restritivo. No MVP, o conteúdo educativo é
+ * liberado (a anamnese é registrada com risk_level = blocked).
  */
-export function RiskBlocked({ reasons }: { reasons: string[] }) {
-  const navigate = useNavigate()
-
+export function RiskBlocked({
+  reasons,
+  onEnter,
+  saving,
+}: {
+  reasons: string[]
+  onEnter: (target?: string) => void
+  saving: boolean
+}) {
   function requestPartner() {
     void triggerAutomation('partner_link_requested', { reasons })
-    navigate('/app', { replace: true })
-    // No MVP o acesso ao conteúdo educativo é liberado, mas o protocolo
-    // restritivo permanece travado até a liberação do profissional.
+    onEnter('/app')
   }
 
   return (
@@ -53,10 +57,16 @@ export function RiskBlocked({ reasons }: { reasons: string[] }) {
         </div>
 
         <div className="w-full flex flex-col gap-3 mt-auto">
-          <Button fullWidth icon="calendar_add_on" onClick={requestPartner}>
-            Agendar com Médico Parceiro
+          <Button fullWidth icon="calendar_add_on" onClick={requestPartner} disabled={saving}>
+            {saving ? 'Registrando…' : 'Agendar com Médico Parceiro'}
           </Button>
-          <Button variant="ghost" fullWidth icon="menu_book" onClick={() => navigate('/app/educacao')}>
+          <Button
+            variant="ghost"
+            fullWidth
+            icon="menu_book"
+            onClick={() => onEnter('/app/educacao')}
+            disabled={saving}
+          >
             Acessar conteúdo educativo
           </Button>
         </div>

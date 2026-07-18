@@ -15,21 +15,50 @@ const roleOptions: { value: Role; label: string; icon: string; desc: string }[] 
 
 /** Tela de aquisição/convite + login (RF01, User Flow passo 1). */
 export function Login() {
-  const { signIn } = useAuth()
+  const { mode, signInDemo, signUp, signIn } = useAuth()
   const navigate = useNavigate()
+  const isSupabase = mode === 'supabase'
+
+  const [tab, setTab] = useState<'signup' | 'login'>('signup')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [role, setRole] = useState<Role>('patient')
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+
+  const showNameAndRole = !isSupabase || tab === 'signup'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError(null)
+    setInfo(null)
     setSubmitting(true)
-    await signIn(name, email, role)
-    if (role === 'patient') {
-      navigate(store.isOnboarded() ? '/app' : '/onboarding', { replace: true })
-    } else {
+    try {
+      if (!isSupabase) {
+        await signInDemo(name, email, role)
+        navigate(role === 'patient' && !store.isOnboarded() ? '/onboarding' : '/app', {
+          replace: true,
+        })
+        return
+      }
+      if (tab === 'signup') {
+        const { needsConfirmation } = await signUp(name, email, password, role)
+        if (needsConfirmation) {
+          setInfo('Cadastro criado! Confirme seu e-mail para entrar (verifique a caixa de entrada).')
+          setTab('login')
+          return
+        }
+      } else {
+        await signIn(email, password)
+      }
+      // Guards decidem se vai para /onboarding (paciente) ou direto ao app.
       navigate('/app', { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Algo deu errado. Tente novamente.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -49,17 +78,42 @@ export function Login() {
           </p>
         </div>
 
+        {/* Alternador Entrar / Criar conta (só no modo Supabase) */}
+        {isSupabase && (
+          <div className="flex rounded-full bg-surface-container p-1 mb-5">
+            {(['signup', 'login'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  setTab(t)
+                  setError(null)
+                  setInfo(null)
+                }}
+                className={clsx(
+                  'flex-1 rounded-full py-2 font-label-md text-label-md transition-all',
+                  tab === t ? 'bg-surface-container-lowest text-primary shadow-ambient' : 'text-on-surface-variant',
+                )}
+              >
+                {t === 'signup' ? 'Criar conta' : 'Entrar'}
+              </button>
+            ))}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {showNameAndRole && (
+            <Field
+              label="Seu nome"
+              icon="badge"
+              value={name}
+              onChange={setName}
+              placeholder="Como podemos te chamar?"
+              required
+            />
+          )}
           <Field
-            label="Seu nome"
-            icon="badge"
-            value={name}
-            onChange={setName}
-            placeholder="Como podemos te chamar?"
-            required
-          />
-          <Field
-            label="E-mail do convite"
+            label={isSupabase ? 'E-mail' : 'E-mail do convite'}
             icon="mail"
             type="email"
             value={email}
@@ -67,40 +121,76 @@ export function Login() {
             placeholder="voce@email.com"
             required
           />
+          {isSupabase && (
+            <Field
+              label="Senha"
+              icon="lock"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="Mínimo 6 caracteres"
+              required
+            />
+          )}
 
-          <div>
-            <label className="font-label-md text-label-md text-on-surface-variant mb-2 block">
-              Tipo de acesso
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {roleOptions.map((opt) => (
-                <button
-                  type="button"
-                  key={opt.value}
-                  onClick={() => setRole(opt.value)}
-                  className={clsx(
-                    'flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition-all active:scale-95',
-                    role === opt.value
-                      ? 'border-primary bg-primary-container/15 text-primary'
-                      : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant',
-                  )}
-                >
-                  <Icon name={opt.icon} fill={role === opt.value} className="text-[24px]" />
-                  <span className="font-label-md text-[13px] leading-none">{opt.label}</span>
-                  <span className="text-[10px] leading-tight opacity-70">{opt.desc}</span>
-                </button>
-              ))}
+          {showNameAndRole && (
+            <div>
+              <label className="font-label-md text-label-md text-on-surface-variant mb-2 block">
+                Tipo de acesso
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {roleOptions.map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => setRole(opt.value)}
+                    className={clsx(
+                      'flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition-all active:scale-95',
+                      role === opt.value
+                        ? 'border-primary bg-primary-container/15 text-primary'
+                        : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant',
+                    )}
+                  >
+                    <Icon name={opt.icon} fill={role === opt.value} className="text-[24px]" />
+                    <span className="font-label-md text-[13px] leading-none">{opt.label}</span>
+                    <span className="text-[10px] leading-tight opacity-70">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {error && (
+            <p className="flex items-center gap-2 rounded-xl bg-error-container/50 text-on-error-container px-4 py-3 font-body-sm text-body-sm">
+              <Icon name="error" fill className="text-[18px]" /> {error}
+            </p>
+          )}
+          {info && (
+            <p className="flex items-center gap-2 rounded-xl bg-primary-container/20 text-on-primary-container px-4 py-3 font-body-sm text-body-sm">
+              <Icon name="mark_email_read" fill className="text-[18px]" /> {info}
+            </p>
+          )}
 
           <Button type="submit" fullWidth iconRight="arrow_forward" disabled={submitting} className="mt-2">
-            {submitting ? 'Entrando…' : 'Entrar na jornada'}
+            {submitting
+              ? 'Aguarde…'
+              : isSupabase
+                ? tab === 'signup'
+                  ? 'Criar conta e começar'
+                  : 'Entrar'
+                : 'Entrar na jornada'}
           </Button>
         </form>
 
         <p className="text-center font-body-sm text-body-sm text-on-surface-variant mt-6">
-          Acesso exclusivo por convite. Ao continuar, você aceita os{' '}
-          <span className="text-primary underline">Termos de Uso</span> e a Política de Privacidade.
+          {isSupabase ? 'Seus dados de saúde são protegidos (LGPD).' : 'Acesso exclusivo por convite.'} Ao
+          continuar, você aceita os <span className="text-primary underline">Termos de Uso</span> e a
+          Política de Privacidade.
+        </p>
+
+        <p className="text-center font-body-sm text-[11px] text-outline mt-3 flex items-center justify-center gap-1">
+          <Icon name={isSupabase ? 'cloud_done' : 'cloud_off'} className="text-[14px]" />
+          {isSupabase ? 'Conectado ao Supabase' : 'Modo demonstração (dados locais)'}
         </p>
       </div>
     </div>

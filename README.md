@@ -74,6 +74,9 @@ VITE_N8N_WEBHOOK_URL=...   # opcional (automações WhatsApp/e-mail)
 
 O app detecta as variáveis automaticamente (`isSupabaseConfigured`).
 
+> 📄 Passo a passo completo para conectar ao Supabase (SQL das tabelas, RLS, auth e
+> deploy): veja **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)**.
+
 ### Testando os papéis (RBAC)
 Na tela de login, escolha **Paciente**, **Parceiro** ou **Admin** — cada papel abre
 áreas diferentes (o painel do parceiro/admin fica acessível pelo Perfil).

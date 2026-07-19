@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { BottomNav } from './BottomNav'
 import { GuidedTour, type TourStep } from './GuidedTour'
 import { useAuth } from '@/context/AuthContext'
-import { useProgram } from '@/context/ProgramContext'
 import { store } from '@/lib/store'
 import { pageVariants } from '@/lib/motion'
 
@@ -53,18 +52,20 @@ const TOUR_STEPS: TourStep[] = [
 export function AppLayout() {
   const location = useLocation()
   const { profile } = useAuth()
-  const { ready } = useProgram()
   const userId = profile?.id ?? null
   const isDashboard = location.pathname === '/app' || location.pathname === '/app/'
   const [tourOpen, setTourOpen] = useState(false)
 
-  // Abre o tutorial guiado na primeira vez no Dashboard (paciente).
+  // Abre o tutorial guiado na primeira vez no Dashboard.
   useEffect(() => {
-    if (!userId || profile?.role !== 'patient' || !ready || !isDashboard) return
+    // Abre para QUALQUER perfil (não só paciente) na primeira vez no Dashboard.
+    // O passo de boas-vindas não depende de nenhum elemento; os demais aguardam
+    // o alvo montar (retry no próprio tour), então não exigimos `ready`.
+    if (!userId || !isDashboard) return
     if (store.getTourSeen(userId)) return
-    const t = setTimeout(() => setTourOpen(true), 650) // deixa o Dashboard montar
+    const t = setTimeout(() => setTourOpen(true), 700) // deixa o Dashboard montar
     return () => clearTimeout(t)
-  }, [userId, profile?.role, ready, isDashboard])
+  }, [userId, isDashboard])
 
   function closeTour() {
     if (userId) store.setTourSeen(userId, true)

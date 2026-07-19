@@ -12,6 +12,7 @@ import { motion } from 'framer-motion'
 import { PROGRAM_LENGTH, STAGES, stageMeta } from '@/lib/gamification'
 import { BADGES } from '@/lib/badges'
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { store } from '@/lib/store'
 import { clsx } from '@/lib/utils'
 import { fadeUpItem, staggerContainer } from '@/lib/motion'
 
@@ -190,6 +191,17 @@ export function Profile() {
       </div>
 
       <div className="flex flex-col gap-3">
+        <Button
+          variant="ghost"
+          fullWidth
+          icon="school"
+          onClick={() => {
+            if (profile?.id) store.setTourSeen(profile.id, false)
+            navigate('/app')
+          }}
+        >
+          Rever tutorial guiado
+        </Button>
         <Button variant="ghost" fullWidth icon="restart_alt" onClick={reset}>
           Reiniciar progresso (demo)
         </Button>

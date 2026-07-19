@@ -117,7 +117,7 @@ export function Dashboard() {
       </div>
 
       {/* Jornada / Progresso */}
-      <div className="glass-card rounded-xl p-md mb-6">
+      <div data-tour="journey" className="glass-card rounded-xl p-md mb-6">
         <div className="flex justify-between items-end mb-4">
           <div>
             <h2 className="font-headline-md text-headline-md text-on-surface">Jornada</h2>
@@ -143,7 +143,7 @@ export function Dashboard() {
       </div>
 
       {/* Check-in Diário */}
-      <section>
+      <section data-tour="checkin">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-headline-md text-headline-md text-on-surface">Check-in Diário</h3>
@@ -173,6 +173,7 @@ export function Dashboard() {
       {/* Upload de refeição */}
       <section className="mt-6">
         <button
+          data-tour="meal"
           onClick={() => setMealOpen(true)}
           className="w-full relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-container to-primary p-6 flex flex-col items-center justify-center text-on-primary shadow-ambient-lg hover:opacity-95 transition-opacity active:scale-[0.98] min-h-[140px]"
         >

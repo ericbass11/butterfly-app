@@ -172,7 +172,15 @@ export async function upsertProgram(
     updated_at: new Date().toISOString(),
   }
   if (onboarded !== undefined) row.onboarded = onboarded
-  const { error } = await client().from('program_state').upsert(row, { onConflict: 'user_id' })
+  let { error } = await client().from('program_state').upsert(row, { onConflict: 'user_id' })
+  // Resiliência: se a migration 0006 (coluna `badges`) não foi aplicada neste
+  // projeto, o Postgres/PostgREST recusa a linha. Nesse caso, regrava SEM as
+  // conquistas — assim o app funciona mesmo sem a migration (as conquistas só
+  // não persistem até rodá-la).
+  if (error && (error.code === 'PGRST204' || error.code === '42703') && /badges/i.test(error.message)) {
+    delete row.badges
+    ;({ error } = await client().from('program_state').upsert(row, { onConflict: 'user_id' }))
+  }
   if (error) throw error
 }
 

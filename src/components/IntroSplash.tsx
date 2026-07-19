@@ -39,7 +39,7 @@ export function IntroSplash({ onDone }: { onDone: () => void }) {
     >
       <video
         ref={ref}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain"
         src={SRC}
         poster={POSTER}
         muted

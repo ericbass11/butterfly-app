@@ -5,8 +5,11 @@ import { store } from '@/lib/store'
 import type { Role } from '@/lib/types'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
-import { MetamorphosisHero } from '@/components/MetamorphosisHero'
+import { IntroSplash } from '@/components/IntroSplash'
+import { useReducedMotion } from 'framer-motion'
 import { clsx } from '@/lib/utils'
+
+const LOGO = `${import.meta.env.BASE_URL}logo.png`
 
 const roleOptions: { value: Role; label: string; icon: string; desc: string }[] = [
   { value: 'patient', label: 'Paciente', icon: 'self_improvement', desc: 'Jornada de 45 dias' },
@@ -19,6 +22,25 @@ export function Login() {
   const { mode, signInDemo, signUp, signIn } = useAuth()
   const navigate = useNavigate()
   const isSupabase = mode === 'supabase'
+
+  // Abertura (splash) com o vídeo — uma vez por sessão, respeitando reduced-motion.
+  const reduce = useReducedMotion()
+  const [showIntro, setShowIntro] = useState(() => {
+    if (reduce) return false
+    try {
+      return sessionStorage.getItem('butterfly.intro.seen') !== '1'
+    } catch {
+      return false
+    }
+  })
+  function dismissIntro() {
+    try {
+      sessionStorage.setItem('butterfly.intro.seen', '1')
+    } catch {
+      /* storage indisponível */
+    }
+    setShowIntro(false)
+  }
 
   const [tab, setTab] = useState<'signup' | 'login'>('signup')
   const [name, setName] = useState('')
@@ -64,15 +86,19 @@ export function Login() {
   }
 
   return (
-    <div className="mx-auto max-w-[520px] min-h-dvh flex flex-col px-container-padding pt-safe pb-8">
-      <div className="flex-1 flex flex-col justify-center animate-fade-in">
-        {/* Marca + vídeo-herói da metamorfose */}
+    <>
+      {showIntro && <IntroSplash onDone={dismissIntro} />}
+      <div className="mx-auto max-w-[520px] min-h-dvh flex flex-col px-container-padding pt-safe pb-8">
+        <div className="flex-1 flex flex-col justify-center animate-fade-in">
+        {/* Marca (logomarca oficial) */}
         <div className="flex flex-col items-center text-center mb-8">
-          <MetamorphosisHero className="w-full max-w-[360px] aspect-[16/10] mb-5" />
-          <h1 className="font-headline-xl text-[34px] leading-tight font-bold text-primary tracking-tight">
-            Butterfly
-          </h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant mt-2 max-w-xs">
+          <img
+            src={LOGO}
+            alt="Butterfly"
+            className="w-auto h-40 max-w-[240px] object-contain mb-3 select-none"
+            draggable={false}
+          />
+          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xs">
             Sua metamorfose de 45 dias em direção à leveza e vitalidade começa aqui.
           </p>
         </div>
@@ -191,8 +217,9 @@ export function Login() {
           <Icon name={isSupabase ? 'cloud_done' : 'cloud_off'} className="text-[14px]" />
           {isSupabase ? 'Conectado ao Supabase' : 'Modo demonstração (dados locais)'}
         </p>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

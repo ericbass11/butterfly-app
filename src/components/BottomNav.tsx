@@ -4,10 +4,10 @@ import { clsx } from '@/lib/utils'
 import { Icon } from './Icon'
 
 const items = [
-  { to: '/app', label: 'Dashboard', icon: 'dashboard', end: true },
-  { to: '/app/educacao', label: 'Educação', icon: 'school', end: false },
-  { to: '/app/chat', label: 'Chat IA', icon: 'smart_toy', end: false },
-  { to: '/app/perfil', label: 'Perfil', icon: 'person', end: false },
+  { to: '/app', label: 'Dashboard', icon: 'dashboard', end: true, tour: 'nav-dashboard' },
+  { to: '/app/educacao', label: 'Educação', icon: 'school', end: false, tour: 'nav-educacao' },
+  { to: '/app/chat', label: 'Chat IA', icon: 'smart_toy', end: false, tour: 'nav-chat' },
+  { to: '/app/perfil', label: 'Perfil', icon: 'person', end: false, tour: 'nav-perfil' },
 ]
 
 export function BottomNav() {
@@ -18,7 +18,7 @@ export function BottomNav() {
                  mx-auto max-w-[520px] left-1/2 -translate-x-1/2"
     >
       {items.map((item) => (
-        <NavLink key={item.to} to={item.to} end={item.end} className="outline-none">
+        <NavLink key={item.to} to={item.to} end={item.end} data-tour={item.tour} className="outline-none">
           {({ isActive }) => (
             <span
               className={clsx(

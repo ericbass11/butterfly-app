@@ -43,6 +43,10 @@ export const store = {
   getOnboardedHint: (userId: string) => read<boolean>(`butterfly.onboarded.${userId}`) === true,
   setOnboardedHint: (userId: string, v: boolean) => write(`butterfly.onboarded.${userId}`, v),
 
+  // Tutorial guiado (tour): mostrado uma vez por usuária; pode ser refeito.
+  getTourSeen: (userId: string) => read<boolean>(`butterfly.tour.${userId}`) === true,
+  setTourSeen: (userId: string, v: boolean) => write(`butterfly.tour.${userId}`, v),
+
   getProgram: () => read<ProgramState>(KEYS.program),
   setProgram: (s: ProgramState) => write(KEYS.program, s),
 

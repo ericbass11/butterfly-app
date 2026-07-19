@@ -193,9 +193,17 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
     async (anamnese: Anamnese, triage: TriageResult) => {
       const base = store.getProgram() ?? createInitialProgram()
       if (isSupabaseConfigured && userId) {
-        await db.saveAnamnese(userId, anamnese, triage)
-        await db.upsertProgram(userId, program.meals.length ? program : base, true)
+        // Marca o hint ANTES de qualquer rede: garante que a entrada no app
+        // nunca fique presa por uma falha de gravação.
         store.setOnboardedHint(userId, true)
+        try {
+          await db.saveAnamnese(userId, anamnese, triage)
+          await db.upsertProgram(userId, program.meals.length ? program : base, true)
+        } catch (err) {
+          // Não bloqueia a navegação; a próxima ação (check-in) tenta gravar de novo.
+          // eslint-disable-next-line no-console
+          console.warn('[onboarding] falha ao salvar no Supabase — seguindo mesmo assim:', err)
+        }
       } else {
         store.setAnamnese(anamnese)
         store.setOnboarded(true)
